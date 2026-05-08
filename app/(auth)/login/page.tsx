@@ -73,9 +73,6 @@ function LoginContent() {
           Sign in with Google
         </button>
 
-        <p className="text-xs text-fg-muted text-center">
-          Only Ridham&apos;s family members can sign in.
-        </p>
       </div>
     </main>
   );

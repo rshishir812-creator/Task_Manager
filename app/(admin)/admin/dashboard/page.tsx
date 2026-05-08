@@ -80,6 +80,7 @@ export default async function AdminDashboard() {
     { href: "/admin/badges", icon: "🏅", label: "Manage Badges" },
     { href: "/admin/calendar", icon: "📅", label: "Calendar View" },
     { href: "/admin/points", icon: "💰", label: "Points Override" },
+    { href: "/admin/view-as-user", icon: "👁️", label: "View as Ridham" },
   ];
 
   return (
@@ -135,7 +136,7 @@ export default async function AdminDashboard() {
       {/* Quick links */}
       <div>
         <h2 className="font-display font-semibold text-fg mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {quickLinks.map((link) => (
             <Link
               key={link.href}
