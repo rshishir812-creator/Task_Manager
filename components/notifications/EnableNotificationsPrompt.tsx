@@ -11,8 +11,30 @@ import {
   requestPermission,
 } from "@/lib/notifications";
 
-export default function EnableNotificationsPrompt({ userId }: { userId: string }) {
+type Mode = "user" | "admin";
+
+const COPY: Record<Mode, { title: string; body: string; accent: string }> = {
+  user: {
+    title: "Stay on top of your streak",
+    body: "Get a friendly reminder to log chores.",
+    accent: "bg-accent-teal",
+  },
+  admin: {
+    title: "Get reminder dispatch alerts",
+    body: "Know when nudges go out and who's still behind.",
+    accent: "bg-accent-amber",
+  },
+};
+
+export default function EnableNotificationsPrompt({
+  userId,
+  mode = "user",
+}: {
+  userId: string;
+  mode?: Mode;
+}) {
   const [visible, setVisible] = useState(false);
+  const copy = COPY[mode];
 
   useEffect(() => {
     let cancelled = false;
@@ -20,7 +42,14 @@ export default function EnableNotificationsPrompt({ userId }: { userId: string }
     const evaluate = async () => {
       if (cancelled) return;
       if (getPermission() !== "default") return;
-      if (isPromptDismissed(userId)) return;
+      if (isPromptDismissed(`${mode}:${userId}`)) return;
+
+      if (mode === "admin") {
+        window.setTimeout(() => {
+          if (!cancelled) setVisible(true);
+        }, 3000);
+        return;
+      }
 
       const supabase = createClient();
       const today = getTodayIST();
@@ -46,16 +75,16 @@ export default function EnableNotificationsPrompt({ userId }: { userId: string }
       cancelled = true;
       window.removeEventListener("chore:completed", onChoreCompleted);
     };
-  }, [userId]);
+  }, [userId, mode]);
 
   const handleEnable = async () => {
     await requestPermission();
-    dismissPrompt(userId);
+    dismissPrompt(`${mode}:${userId}`);
     setVisible(false);
   };
 
   const handleDismiss = () => {
-    dismissPrompt(userId);
+    dismissPrompt(`${mode}:${userId}`);
     setVisible(false);
   };
 
@@ -71,13 +100,13 @@ export default function EnableNotificationsPrompt({ userId }: { userId: string }
         >
           <span className="text-2xl">🔔</span>
           <div className="flex-1 text-sm text-fg">
-            <p className="font-semibold leading-tight">Stay on top of your streak</p>
-            <p className="text-xs text-fg-muted">Get a friendly reminder to log chores.</p>
+            <p className="font-semibold leading-tight">{copy.title}</p>
+            <p className="text-xs text-fg-muted">{copy.body}</p>
           </div>
           <div className="flex flex-col gap-1">
             <button
               onClick={handleEnable}
-              className="px-3 py-1 text-xs font-semibold rounded-lg bg-accent-teal text-bg-elevated"
+              className={`px-3 py-1 text-xs font-semibold rounded-lg text-bg-elevated ${copy.accent}`}
             >
               Enable
             </button>
