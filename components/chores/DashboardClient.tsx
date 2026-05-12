@@ -3,6 +3,7 @@
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Chore, ChoreCompletion, Streak, Profile } from "@/lib/types";
+import type { MilestoneProgress } from "@/lib/milestone-calculator";
 import { getLevelInfo } from "@/lib/points-calculator";
 import ChoreCard from "@/components/chores/ChoreCard";
 import XPBar from "@/components/gamification/XPBar";
@@ -10,6 +11,7 @@ import StreakFlame from "@/components/gamification/StreakFlame";
 import ConfettiBlast from "@/components/gamification/ConfettiBlast";
 import LevelUpModal from "@/components/gamification/LevelUpModal";
 import BadgeCelebrationModal from "@/components/gamification/BadgeCelebrationModal";
+import MilestonesCard from "@/components/gamification/MilestonesCard";
 
 interface DashboardClientProps {
   profile: Profile;
@@ -19,6 +21,7 @@ interface DashboardClientProps {
   totalPoints: number;
   today: string;
   overallStreak: number;
+  milestones: MilestoneProgress[];
 }
 
 function getGreeting(name: string) {
@@ -36,6 +39,7 @@ export default function DashboardClient({
   totalPoints: initialPoints,
   today,
   overallStreak: initialOverallStreak,
+  milestones,
 }: DashboardClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -262,6 +266,8 @@ export default function DashboardClient({
           </div>
         </div>
       </div>
+
+      <MilestonesCard milestones={milestones} />
 
       {/* Chores section */}
       <h2 className="font-display font-bold text-lg text-fg mb-3">
