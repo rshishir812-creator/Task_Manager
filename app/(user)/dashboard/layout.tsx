@@ -4,6 +4,7 @@ import SignOutButton from "@/components/ui/SignOutButton";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import BottomNav from "@/components/layout/BottomNav";
 import PageTransition from "@/components/ui/PageTransition";
+import { NavProgressProvider } from "@/components/ui/NavProgress";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export default async function DashboardLayout({
     .single() as { data: Profile | null; error: unknown };
 
   return (
+    <NavProgressProvider color="teal">
     <div className="min-h-screen bg-bg">
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-bg-elevated/90 backdrop-blur-sm">
         <span className="font-display text-xl font-bold text-fg">🎮 ChoreQuest</span>
@@ -47,5 +49,6 @@ export default async function DashboardLayout({
 
       <BottomNav />
     </div>
+    </NavProgressProvider>
   );
 }
