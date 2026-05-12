@@ -198,6 +198,7 @@ export default function ChoreCard({
             {/* Complete button */}
             <button
               onClick={handleCheck}
+              onPointerDown={(e) => e.stopPropagation()}
               disabled={loading || isException}
               aria-label={isDone ? "Mark incomplete" : "Mark complete"}
               className={`flex-shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-teal ${
@@ -230,6 +231,7 @@ export default function ChoreCard({
           {!isDone && !isException && (
             <button
               onClick={() => setShowException(true)}
+              onPointerDown={(e) => e.stopPropagation()}
               className="mt-3 text-xs text-fg-muted hover:text-accent-amber transition-colors"
             >
               ⚡ Can&apos;t do it today? Mark exception
