@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import AdminNav from "@/components/layout/AdminNav";
 import { NavProgressProvider } from "@/components/ui/NavProgress";
+import SessionWatcher from "@/components/auth/SessionWatcher";
 import SignOutButton from "@/components/ui/SignOutButton";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import Image from "next/image";
@@ -57,6 +58,7 @@ export default async function AdminLayout({
           {children}
         </main>
       </div>
+      <SessionWatcher />
     </div>
     </NavProgressProvider>
   );

@@ -5,6 +5,9 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 import BottomNav from "@/components/layout/BottomNav";
 import PageTransition from "@/components/ui/PageTransition";
 import { NavProgressProvider } from "@/components/ui/NavProgress";
+import SessionWatcher from "@/components/auth/SessionWatcher";
+import ReminderManager from "@/components/notifications/ReminderManager";
+import EnableNotificationsPrompt from "@/components/notifications/EnableNotificationsPrompt";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -48,6 +51,9 @@ export default async function DashboardLayout({
       </main>
 
       <BottomNav />
+      <SessionWatcher />
+      <ReminderManager userId={user.id} />
+      <EnableNotificationsPrompt userId={user.id} />
     </div>
     </NavProgressProvider>
   );

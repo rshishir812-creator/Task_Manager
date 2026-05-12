@@ -97,6 +97,7 @@ export default function DashboardClient({
         setChoreStreaks((prev) => ({ ...prev, [choreId]: data.newChoreStreak }));
         // Replace temp completion with real server data (refresh)
         startTransition(() => router.refresh());
+        window.dispatchEvent(new CustomEvent("chore:completed"));
 
         if (data.dailyBonusAwarded) showToast("🎉 +50 bonus for completing all chores!");
         if (data.badgesAwarded.length > 0) setNewBadges(data.badgesAwarded);
