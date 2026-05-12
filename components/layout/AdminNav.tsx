@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useNavProgress } from "@/components/ui/NavProgress";
 
 const LINKS = [
   { href: "/admin/dashboard", label: "Overview", icon: "📋" },
@@ -13,6 +14,7 @@ const LINKS = [
 
 export default function AdminNav() {
   const pathname = usePathname();
+  const { start } = useNavProgress();
 
   return (
     <>
@@ -25,6 +27,7 @@ export default function AdminNav() {
             <Link
               key={link.href}
               href={link.href}
+              onClick={() => { if (!active) start(); }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 active
                   ? "bg-accent-amber/20 text-accent-amber"
@@ -48,6 +51,7 @@ export default function AdminNav() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => { if (!active) start(); }}
                 className={`flex-1 flex flex-col items-center gap-0.5 py-3 text-xs min-h-[44px] transition-colors ${
                   active ? "text-accent-amber font-semibold" : "text-fg-muted hover:text-fg"
                 }`}

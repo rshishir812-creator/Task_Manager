@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import AdminNav from "@/components/layout/AdminNav";
+import { NavProgressProvider } from "@/components/ui/NavProgress";
 import SignOutButton from "@/components/ui/SignOutButton";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import Image from "next/image";
@@ -26,6 +27,7 @@ export default async function AdminLayout({
   if (profile?.role !== "admin") redirect("/dashboard");
 
   return (
+    <NavProgressProvider color="amber">
     <div className="min-h-screen bg-bg flex flex-col">
       {/* Top bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-bg-elevated/90 backdrop-blur-sm">
@@ -56,5 +58,6 @@ export default async function AdminLayout({
         </main>
       </div>
     </div>
+    </NavProgressProvider>
   );
 }
