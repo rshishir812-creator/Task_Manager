@@ -16,6 +16,8 @@ export default function BadgeAdminPanel({ badges, userBadges, userId }: BadgeAdm
     new Map(userBadges.map((ub) => [ub.badge_id, ub]))
   );
   const [awarding, setAwarding] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "earned" | "unearned">("all");
 
@@ -45,6 +47,30 @@ export default function BadgeAdminPanel({ badges, userBadges, userId }: BadgeAdm
     }
   }
 
+  async function revoke(badge: Badge) {
+    setRevoking(badge.id);
+    setConfirmRevoke(null);
+    try {
+      const res = await fetch("/api/admin/badges/award", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, badgeId: badge.id }),
+      });
+      if (!res.ok) throw new Error();
+      setEarnedMap((prev) => {
+        const next = new Map(prev);
+        next.delete(badge.id);
+        return next;
+      });
+      showToast(`🗑️ Revoked: ${badge.title}`);
+      router.refresh();
+    } catch {
+      showToast("❌ Failed to revoke badge");
+    } finally {
+      setRevoking(null);
+    }
+  }
+
   const grouped = {
     special: badges.filter((b) => b.badge_type === "special"),
     overall: badges.filter((b) => b.badge_type === "streak" && b.chore_id === null),
@@ -55,6 +81,7 @@ export default function BadgeAdminPanel({ badges, userBadges, userId }: BadgeAdm
     const earned = earnedMap.get(badge.id);
     if (filter === "earned" && !earned) return null;
     if (filter === "unearned" && earned) return null;
+    const isConfirming = confirmRevoke === badge.id;
     return (
       <div className="flex items-center gap-3 px-4 py-3">
         <span className={`text-2xl ${earned ? "" : "grayscale opacity-60"}`}>
@@ -82,7 +109,35 @@ export default function BadgeAdminPanel({ badges, userBadges, userId }: BadgeAdm
           </button>
         )}
         {earned && (
-          <span className="text-xs text-accent-teal">✓ Earned</span>
+          <div className="flex items-center gap-2">
+            {isConfirming ? (
+              <>
+                <button
+                  onClick={() => revoke(badge)}
+                  disabled={revoking === badge.id}
+                  className="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full hover:bg-red-500/40 transition-colors disabled:opacity-50"
+                >
+                  {revoking === badge.id ? "…" : "Confirm"}
+                </button>
+                <button
+                  onClick={() => setConfirmRevoke(null)}
+                  className="text-xs text-fg-muted hover:text-fg transition-colors"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-accent-teal">✓ Earned</span>
+                <button
+                  onClick={() => setConfirmRevoke(badge.id)}
+                  className="text-xs text-fg-muted hover:text-red-400 transition-colors ml-1"
+                >
+                  Revoke
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
     );

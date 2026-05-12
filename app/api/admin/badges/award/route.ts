@@ -37,3 +37,19 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ userBadge: data });
 }
+
+export async function DELETE(request: NextRequest) {
+  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { userId, badgeId } = await request.json() as { userId: string; badgeId: string };
+  const adminClient = createAdminClient();
+
+  const { error } = await adminClient
+    .from("user_badges")
+    .delete()
+    .eq("user_id", userId)
+    .eq("badge_id", badgeId);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
