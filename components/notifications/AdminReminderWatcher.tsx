@@ -61,23 +61,20 @@ export default function AdminReminderWatcher({ adminId }: { adminId: string }) {
           ? `Reminders sent 📤 — ${summary.behindCount}/${summary.totalUsers} still pending (${names}${extra})`
           : `Evening reminders sent 🌙 — ${summary.behindCount} user${summary.behindCount === 1 ? "" : "s"} still behind (${names}${extra})`;
 
-      if (
-        document.visibilityState === "hidden" &&
-        getPermission() === "granted"
-      ) {
+      if (getPermission() === "granted") {
         try {
           new Notification("ChoreQuest Admin", {
             body,
             icon: "/favicon.ico",
             tag: `chorequest-admin-${slot}`,
           });
+          return;
         } catch {
-          /* OS-level block — silently fall through */
+          // OS-level block — fall through to in-app banner
         }
-      } else {
-        setBanner(summary);
-        window.setTimeout(() => setBanner(null), BANNER_DURATION_MS);
       }
+      setBanner(summary);
+      window.setTimeout(() => setBanner(null), BANNER_DURATION_MS);
     },
     [scopedId, fetchSummary]
   );

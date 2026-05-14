@@ -2,19 +2,17 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getLevelInfo } from "@/lib/points-calculator";
+import { getTodayIST } from "@/lib/streak-calculator";
 import XPBar from "@/components/gamification/XPBar";
 import StreakFlame from "@/components/gamification/StreakFlame";
 import type { Chore, ChoreCompletion, Streak, DailyBonus } from "@/lib/types";
 
-function startOf(period: "week" | "month"): Date {
-  const now = new Date();
-  if (period === "week") {
-    const d = new Date(now);
-    d.setDate(d.getDate() - d.getDay());
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-  return new Date(now.getFullYear(), now.getMonth(), 1);
+function startOf(period: "week" | "month", today: string): string {
+  if (period === "month") return today.slice(0, 8) + "01";
+  const parts = today.split("-").map(Number);
+  const dt = new Date(Date.UTC(parts[0] ?? 2000, (parts[1] ?? 1) - 1, parts[2] ?? 1));
+  dt.setUTCDate(dt.getUTCDate() - dt.getUTCDay()); // back to Sunday
+  return dt.toISOString().slice(0, 10);
 }
 
 export default async function StatsPage() {
@@ -47,8 +45,9 @@ export default async function StatsPage() {
 
   const levelInfo = getLevelInfo(totalPoints);
 
-  const weekStart = startOf("week").toISOString().slice(0, 10);
-  const monthStart = startOf("month").toISOString().slice(0, 10);
+  const today = getTodayIST();
+  const weekStart = startOf("week", today);
+  const monthStart = startOf("month", today);
 
   const weekPoints = completions
     .filter((c) => c.completed_date >= weekStart)

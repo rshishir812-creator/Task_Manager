@@ -17,11 +17,26 @@ export function getDayOfWeek(dateStr: string): DayOfWeek {
   return DAY_INDEX[date.getDay()] ?? "sun";
 }
 
-/** Returns today's date as YYYY-MM-DD in IST (UTC+5:30). */
+const IST_OFFSET_HOURS = 5.5;
+export const DAY_ROLLOVER_HOUR_IST = 7;
+
+/**
+ * Returns today's logical date as YYYY-MM-DD in IST.
+ * The day rolls over at 7 AM IST — anything before that still counts as yesterday.
+ */
 export function getTodayIST(): string {
   const now = new Date();
-  const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
-  return ist.toISOString().slice(0, 10);
+  const shifted = new Date(
+    now.getTime() + (IST_OFFSET_HOURS - DAY_ROLLOVER_HOUR_IST) * 60 * 60 * 1000
+  );
+  return shifted.toISOString().slice(0, 10);
+}
+
+/** Returns the day before the given YYYY-MM-DD date, in YYYY-MM-DD. */
+export function getYesterdayIST(today: string): string {
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 /** Returns chores scheduled for a given day. */

@@ -66,23 +66,20 @@ export default function ReminderManager({ userId }: { userId: string }) {
           ? `You have ${count} chore${count === 1 ? "" : "s"} left today 💪`
           : `Don't break the streak — ${count} chore${count === 1 ? "" : "s"} still pending 🌙`;
 
-      if (
-        document.visibilityState === "hidden" &&
-        getPermission() === "granted"
-      ) {
+      if (getPermission() === "granted") {
         try {
           new Notification("ChoreQuest", {
             body,
             icon: "/favicon.ico",
             tag: `chorequest-${slot}`,
           });
+          return;
         } catch {
-          /* notification might be blocked at OS level — silently fall through */
+          // OS-level block — fall through to in-app banner
         }
-      } else {
-        setBanner({ count });
-        window.setTimeout(() => setBanner(null), BANNER_DURATION_MS);
       }
+      setBanner({ count });
+      window.setTimeout(() => setBanner(null), BANNER_DURATION_MS);
     },
     [userId, fetchIncompleteCount]
   );

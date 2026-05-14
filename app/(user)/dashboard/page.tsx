@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getChoresForDay, getDayOfWeek, getTodayIST, computeOverallStreak } from "@/lib/streak-calculator";
+import { getChoresForDay, getDayOfWeek, getTodayIST, getYesterdayIST, computeOverallStreak } from "@/lib/streak-calculator";
 import { computeMilestones } from "@/lib/milestone-calculator";
 import DashboardClient from "@/components/chores/DashboardClient";
 import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile, Badge, UserBadge } from "@/lib/types";
@@ -46,6 +46,11 @@ export default async function UserDashboard() {
   const todaysChores = getChoresForDay(chores, todayDow);
   const todayCompletions = allCompletions.filter((c) => c.completed_date === today);
 
+  const yesterday = getYesterdayIST(today);
+  const yesterdayDow = getDayOfWeek(yesterday);
+  const yesterdaysChores = getChoresForDay(chores, yesterdayDow);
+  const yesterdayCompletions = allCompletions.filter((c) => c.completed_date === yesterday);
+
   // Calculate total points: sum of all completions + daily bonuses
   const totalPoints =
     allCompletions.reduce((sum, c) => sum + (c.points_earned ?? 0), 0) +
@@ -66,6 +71,9 @@ export default async function UserDashboard() {
       profile={profile}
       todaysChores={todaysChores}
       initialCompletions={todayCompletions}
+      yesterday={yesterday}
+      yesterdaysChores={yesterdaysChores}
+      yesterdayCompletions={yesterdayCompletions}
       streaks={streaks}
       totalPoints={totalPoints}
       today={today}
