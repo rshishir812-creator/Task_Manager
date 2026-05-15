@@ -75,6 +75,7 @@ export default function BadgeAdminPanel({ badges, userBadges, userId }: BadgeAdm
     special: badges.filter((b) => b.badge_type === "special"),
     overall: badges.filter((b) => b.badge_type === "streak" && b.chore_id === null),
     perchore: badges.filter((b) => b.badge_type === "streak" && b.chore_id !== null),
+    award: badges.filter((b) => b.badge_type === "milestone"),
   };
 
   function BadgeRow({ badge }: { badge: Badge }) {
@@ -95,7 +96,11 @@ export default function BadgeAdminPanel({ badges, userBadges, userId }: BadgeAdm
             </p>
           ) : (
             <p className="text-xs text-fg-muted">
-              {badge.threshold ? `${badge.threshold}-day streak` : "Special"}
+              {badge.badge_type === "milestone" && badge.threshold
+                ? `${badge.threshold} total completions`
+                : badge.threshold
+                ? `${badge.threshold}-day streak`
+                : "Special"}
             </p>
           )}
         </div>
@@ -201,6 +206,18 @@ export default function BadgeAdminPanel({ badges, userBadges, userId }: BadgeAdm
           </p>
           <div className="divide-y divide-[var(--border)]">
             {grouped.perchore.map((b) => <BadgeRow key={b.id} badge={b} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Award badges (cumulative milestones) */}
+      {grouped.award.length > 0 && (
+        <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated overflow-hidden">
+          <p className="px-4 py-2.5 text-xs font-semibold text-fg-muted border-b border-[var(--border)] uppercase tracking-wide">
+            🏆 Awards
+          </p>
+          <div className="divide-y divide-[var(--border)]">
+            {grouped.award.map((b) => <BadgeRow key={b.id} badge={b} />)}
           </div>
         </div>
       )}

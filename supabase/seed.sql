@@ -13,7 +13,7 @@ values
   ('Kharaj Practice (Singing)',     null, '🎵', 25, array['mon','tue','wed','thu','fri','sat'],      3, true),
   ('Evening Pooja',                 null, '🪔', 15, array['mon','tue','wed','thu','fri','sat','sun'], 4, true),
   ('Singing — Ragas, Song Practice & Exercises (45 min min)', null, '🎤', 30, array['mon','tue','wed','thu','fri','sat'], 5, true),
-  ('Arrange Vessels',               null, '🫙', 10, array['mon','tue','wed','thu','fri','sat','sun'], 6, true),
+  ('Arrange Vessels',               null, '🫩', 10, array['mon','tue','wed','thu','fri','sat','sun'], 6, true),
   ('Read a Few Pages of a Book',    null, '📚', 15, array['mon','tue','wed','thu','fri','sat','sun'], 7, true),
   ('Sleep Early (before 12:00 AM)', null, '🌙', 20, array['mon','tue','wed','thu','fri','sat','sun'], 8, true),
   ('Wake Up Early (before 9:00 AM)',null, '☀️', 20, array['mon','tue','wed','thu','fri','sat','sun'], 9, true)
@@ -66,7 +66,7 @@ begin
 end $$;
 
 -- ============================================================
--- SPECIAL BADGES (5)
+-- SPECIAL BADGES (6)
 -- ============================================================
 
 insert into public.badges (code, title, description, icon, badge_type, threshold, chore_id)
@@ -105,5 +105,27 @@ values
     'Evening Pooja for 30 days straight',
     '🪔', 'special', 30,
     (select id from public.chores where title = 'Evening Pooja')
+  ),
+  (
+    'special_pill_paladin',
+    'Pill Paladin',
+    'Your shield against skipping — 50 nights straight',
+    '🛡️', 'special', 50,
+    (select id from public.chores where lower(title) like '%medicine%' limit 1)
+  )
+on conflict (code) do nothing;
+
+-- ============================================================
+-- AWARD BADGES (cumulative completion counts — milestone type)
+-- ============================================================
+
+insert into public.badges (code, title, description, icon, badge_type, threshold, chore_id)
+values
+  (
+    'award_wellness_warrior',
+    'Wellness Warrior',
+    'Take medicines at night 100 times — gaps welcome',
+    '💪', 'milestone', 100,
+    (select id from public.chores where lower(title) like '%medicine%' limit 1)
   )
 on conflict (code) do nothing;

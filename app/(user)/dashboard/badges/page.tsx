@@ -44,8 +44,9 @@ export default async function BadgesPage() {
 
   const grouped = {
     special: badges.filter((b) => b.badge_type === "special"),
-    streak: badges.filter((b) => b.badge_type === "streak" && b.chore_id === null),
-    milestone: badges.filter((b) => b.badge_type === "streak" && b.chore_id !== null),
+    overall: badges.filter((b) => b.badge_type === "streak" && b.chore_id === null),
+    perchore: badges.filter((b) => b.badge_type === "streak" && b.chore_id !== null),
+    award: badges.filter((b) => b.badge_type === "milestone"),
   };
 
   return (
@@ -68,22 +69,33 @@ export default async function BadgesPage() {
         </section>
       )}
 
-      {grouped.streak.length > 0 && (
+      {grouped.overall.length > 0 && (
         <section>
           <h2 className="font-display font-semibold text-fg mb-3">🔥 Daily Streak</h2>
           <div className="grid grid-cols-4 gap-2">
-            {grouped.streak.map((b) => (
+            {grouped.overall.map((b) => (
               <BadgeTile key={b.id} badge={b} userBadge={earnedMap.get(b.id)} progress={progressMap.get(b.id)} />
             ))}
           </div>
         </section>
       )}
 
-      {grouped.milestone.length > 0 && (
+      {grouped.perchore.length > 0 && (
         <section>
           <h2 className="font-display font-semibold text-fg mb-3">🎯 Per-Chore Streaks</h2>
           <div className="grid grid-cols-4 gap-2">
-            {grouped.milestone.map((b) => (
+            {grouped.perchore.map((b) => (
+              <BadgeTile key={b.id} badge={b} userBadge={earnedMap.get(b.id)} progress={progressMap.get(b.id)} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {grouped.award.length > 0 && (
+        <section>
+          <h2 className="font-display font-semibold text-fg mb-3">🏆 Awards</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {grouped.award.map((b) => (
               <BadgeTile key={b.id} badge={b} userBadge={earnedMap.get(b.id)} progress={progressMap.get(b.id)} />
             ))}
           </div>

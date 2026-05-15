@@ -25,6 +25,16 @@ export function checkBadges(
     if (earnedIds.has(badge.id)) continue;
     if (badge.threshold === null) continue;
 
+    if (badge.badge_type === "milestone" && badge.chore_id !== null) {
+      const count = completions.filter(
+        (c) => c.chore_id === badge.chore_id && !c.is_exception
+      ).length;
+      if (count >= badge.threshold) {
+        newBadges.push(badge);
+      }
+      continue;
+    }
+
     if (badge.chore_id === null) {
       // Overall streak badge
       if (badge.badge_type === "streak" && overallStreak >= badge.threshold) {
@@ -68,6 +78,11 @@ export function checkBadges(
       const poojaChore = chores.find((c) => c.title.toLowerCase().includes("pooja"));
       if (!poojaChore) return false;
       return computeChoreStreak(poojaChore, completions, today) >= 30;
+    },
+    special_pill_paladin: () => {
+      const medChore = chores.find((c) => c.title.toLowerCase().includes("medicine"));
+      if (!medChore) return false;
+      return computeChoreStreak(medChore, completions, today) >= 50;
     },
   };
 

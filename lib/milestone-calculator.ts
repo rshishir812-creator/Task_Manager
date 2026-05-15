@@ -64,6 +64,8 @@ const SPECIAL_HANDLERS: Record<
     streakOnChoreMatching(chores, completions, today, ["pooja"], 30),
   special_singing_star: (chores, completions, today) =>
     minStreakAcrossMatching(chores, completions, today, ["singing", "kharaj"], 14),
+  special_pill_paladin: (chores, completions, today) =>
+    streakOnChoreMatching(chores, completions, today, ["medicine"], 50),
 };
 
 export function computeMilestones(args: {
@@ -102,6 +104,14 @@ export function computeMilestones(args: {
       current = res.current;
       target = res.target;
       chore = res.chore;
+    } else if (badge.badge_type === "milestone" && badge.chore_id !== null && badge.threshold !== null) {
+      const c = chores.find((ch) => ch.id === badge.chore_id);
+      if (!c) continue;
+      chore = c;
+      target = badge.threshold;
+      current = completions.filter(
+        (cc) => cc.chore_id === badge.chore_id && !cc.is_exception
+      ).length;
     }
 
     if (current === null || target === null || target <= 0) continue;
