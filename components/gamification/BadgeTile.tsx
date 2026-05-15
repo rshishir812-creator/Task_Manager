@@ -70,7 +70,11 @@ export default function BadgeTile({ badge, userBadge, progress }: BadgeTileProps
             )}
             {!earned && badge.threshold !== null && (
               <p className="text-xs text-fg-muted mt-3">
-                Requires {badge.threshold}-day streak
+                {badge.badge_type === "milestone"
+                  ? `Requires ${badge.threshold} total completions`
+                  : badge.badge_type === "special"
+                  ? badge.description ?? `Requires ${badge.threshold}-day streak`
+                  : `Requires ${badge.threshold}-day streak`}
               </p>
             )}
             <button

@@ -46,7 +46,8 @@ export async function PATCH(
       .from("badges")
       .select("id, threshold")
       .eq("chore_id", params.id)
-      .eq("badge_type", "streak");
+      .eq("badge_type", "streak")
+      .like("code", "chore_streak_%");
 
     if (existingBadges && existingBadges.length > 0) {
       await Promise.all(

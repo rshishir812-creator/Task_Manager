@@ -51,17 +51,29 @@ export function checkBadges(
     }
   }
 
+  // Prefer the badge's chore_id FK; fall back to keyword if the badge has no FK
+  // (legacy seeded rows, or specials that span multiple chores).
+  const resolveChore = (badge: Badge, keywords: string[]): Chore | undefined => {
+    if (badge.chore_id) {
+      const c = chores.find((ch) => ch.id === badge.chore_id);
+      if (c) return c;
+    }
+    return chores.find((c) =>
+      keywords.some((k) => c.title.toLowerCase().includes(k))
+    );
+  };
+
   // Special badges (checked by code pattern)
-  const specialChecks: Record<string, () => boolean> = {
-    special_early_bird: () => {
-      const wakeChore = chores.find((c) => c.title.toLowerCase().includes("wake up"));
-      if (!wakeChore) return false;
-      return computeChoreStreak(wakeChore, completions, today) >= 7;
+  const specialChecks: Record<string, (badge: Badge) => boolean> = {
+    special_early_bird: (badge) => {
+      const chore = resolveChore(badge, ["wake up"]);
+      if (!chore) return false;
+      return computeChoreStreak(chore, completions, today) >= 7;
     },
-    special_bookworm: () => {
-      const readChore = chores.find((c) => c.title.toLowerCase().includes("read"));
-      if (!readChore) return false;
-      return computeChoreStreak(readChore, completions, today) >= 30;
+    special_bookworm: (badge) => {
+      const chore = resolveChore(badge, ["read"]);
+      if (!chore) return false;
+      return computeChoreStreak(chore, completions, today) >= 30;
     },
     special_singing_star: () => {
       const singingChores = chores.filter(
@@ -74,15 +86,15 @@ export function checkBadges(
       );
     },
     special_perfect_week: () => overallStreak >= 7,
-    special_pooja_devotee: () => {
-      const poojaChore = chores.find((c) => c.title.toLowerCase().includes("pooja"));
-      if (!poojaChore) return false;
-      return computeChoreStreak(poojaChore, completions, today) >= 30;
+    special_pooja_devotee: (badge) => {
+      const chore = resolveChore(badge, ["pooja"]);
+      if (!chore) return false;
+      return computeChoreStreak(chore, completions, today) >= 30;
     },
-    special_pill_paladin: () => {
-      const medChore = chores.find((c) => c.title.toLowerCase().includes("medicine"));
-      if (!medChore) return false;
-      return computeChoreStreak(medChore, completions, today) >= 50;
+    special_pill_paladin: (badge) => {
+      const chore = resolveChore(badge, ["medicine"]);
+      if (!chore) return false;
+      return computeChoreStreak(chore, completions, today) >= 50;
     },
   };
 
@@ -90,7 +102,7 @@ export function checkBadges(
     if (earnedIds.has(badge.id)) continue;
     if (badge.badge_type !== "special") continue;
     const check = specialChecks[badge.code];
-    if (check && check()) {
+    if (check && check(badge)) {
       newBadges.push(badge);
     }
   }

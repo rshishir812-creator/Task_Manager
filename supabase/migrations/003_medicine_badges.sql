@@ -5,6 +5,12 @@
 -- 4. Add Wellness Warrior (cumulative milestone, 100 total completions)
 --
 -- Idempotent: safe to re-run. The DELETE steps are guarded so a second run is a no-op.
+--
+-- NOTE: If the medicine chore is ever deleted and re-created through the admin UI,
+-- the auto-generator at app/api/admin/chores/route.ts will install a fresh 7-tier
+-- streak ladder for the new chore_id. The curated 5 rows are tied to the old
+-- chore_id (cascaded or orphaned by FK). To restore the level-up theme,
+-- re-run this migration after the recreate.
 
 do $$
 declare med_id uuid;

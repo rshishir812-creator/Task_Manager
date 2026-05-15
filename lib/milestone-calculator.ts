@@ -17,11 +17,16 @@ function streakOnChoreMatching(
   completions: ChoreCompletion[],
   today: string,
   keywords: string[],
-  target: number
+  target: number,
+  choreId?: string | null
 ): SpecialResult {
-  const chore = chores.find((c) =>
-    keywords.some((k) => c.title.toLowerCase().includes(k))
-  );
+  let chore: Chore | undefined;
+  if (choreId) chore = chores.find((c) => c.id === choreId);
+  if (!chore) {
+    chore = chores.find((c) =>
+      keywords.some((k) => c.title.toLowerCase().includes(k))
+    );
+  }
   if (!chore) return { current: 0, target };
   return {
     current: computeChoreStreak(chore, completions, today),
@@ -50,22 +55,22 @@ function minStreakAcrossMatching(
 // Mirrors the hard-coded thresholds in lib/badge-checker.ts.
 const SPECIAL_HANDLERS: Record<
   string,
-  (chores: Chore[], completions: ChoreCompletion[], today: string) => SpecialResult
+  (badge: Badge, chores: Chore[], completions: ChoreCompletion[], today: string) => SpecialResult
 > = {
-  special_perfect_week: (chores, completions, today) => ({
+  special_perfect_week: (_badge, chores, completions, today) => ({
     current: computeOverallStreak(chores, completions, today),
     target: 7,
   }),
-  special_early_bird: (chores, completions, today) =>
-    streakOnChoreMatching(chores, completions, today, ["wake up"], 7),
-  special_bookworm: (chores, completions, today) =>
-    streakOnChoreMatching(chores, completions, today, ["read"], 30),
-  special_pooja_devotee: (chores, completions, today) =>
-    streakOnChoreMatching(chores, completions, today, ["pooja"], 30),
-  special_singing_star: (chores, completions, today) =>
+  special_early_bird: (badge, chores, completions, today) =>
+    streakOnChoreMatching(chores, completions, today, ["wake up"], 7, badge.chore_id),
+  special_bookworm: (badge, chores, completions, today) =>
+    streakOnChoreMatching(chores, completions, today, ["read"], 30, badge.chore_id),
+  special_pooja_devotee: (badge, chores, completions, today) =>
+    streakOnChoreMatching(chores, completions, today, ["pooja"], 30, badge.chore_id),
+  special_singing_star: (_badge, chores, completions, today) =>
     minStreakAcrossMatching(chores, completions, today, ["singing", "kharaj"], 14),
-  special_pill_paladin: (chores, completions, today) =>
-    streakOnChoreMatching(chores, completions, today, ["medicine"], 50),
+  special_pill_paladin: (badge, chores, completions, today) =>
+    streakOnChoreMatching(chores, completions, today, ["medicine"], 50, badge.chore_id),
 };
 
 export function computeMilestones(args: {
@@ -99,7 +104,7 @@ export function computeMilestones(args: {
     } else if (badge.badge_type === "special") {
       const handler = SPECIAL_HANDLERS[badge.code];
       if (!handler) continue;
-      const res = handler(chores, completions, today);
+      const res = handler(badge, chores, completions, today);
       if (!res) continue;
       current = res.current;
       target = res.target;

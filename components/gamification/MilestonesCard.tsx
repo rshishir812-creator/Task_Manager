@@ -20,7 +20,8 @@ export default function MilestonesCard({
       <ul className="space-y-3">
         {milestones.map((m) => {
           const icon = m.badge.icon ?? m.chore?.icon ?? "🏅";
-          const daysLabel = `${m.distance} day${m.distance === 1 ? "" : "s"} to go`;
+          const unit = m.badge.badge_type === "milestone" ? "completion" : "day";
+          const distanceLabel = `${m.distance} ${unit}${m.distance === 1 ? "" : "s"} to go`;
           return (
             <li key={m.badge.id} className="flex items-center gap-3">
               <span className="text-2xl shrink-0">{icon}</span>
@@ -39,7 +40,7 @@ export default function MilestonesCard({
                     style={{ width: `${m.progressFraction * 100}%` }}
                   />
                 </div>
-                <p className="text-xs text-fg-muted mt-1">{daysLabel}</p>
+                <p className="text-xs text-fg-muted mt-1">{distanceLabel}</p>
               </div>
             </li>
           );
