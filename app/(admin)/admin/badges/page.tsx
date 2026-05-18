@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import BadgeAdminPanel from "@/components/admin/BadgeAdminPanel";
-import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
+import ChildPicker from "@/components/admin/ChildPicker";
 import Link from "next/link";
 import type { Badge, UserBadge } from "@/lib/types";
 
@@ -14,7 +15,10 @@ export default async function AdminBadgesPage({
   if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
-  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
+  const [child, allChildren] = await Promise.all([
+    resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin),
+    getChildrenOfFamily(ctx.familyId),
+  ]);
 
   if (!child) {
     return (
@@ -41,9 +45,10 @@ export default async function AdminBadgesPage({
       <div>
         <h1 className="font-display font-bold text-2xl text-fg">Badge Management 🏅</h1>
         <p className="text-sm text-fg-muted mt-1">
-          {ridham.name?.split(" ")[0] ?? "Ridham"}&apos;s badges — award manually or track progress
+          {ridham.name?.split(" ")[0] ?? "child"}&apos;s badges — award manually or track progress
         </p>
       </div>
+      <ChildPicker kids={allChildren} currentChildId={ridham.id} />
       <BadgeAdminPanel badges={badges} userBadges={userBadges} userId={ridham.id} />
     </div>
   );

@@ -47,15 +47,26 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/dashboard`);
       }
 
-      // Parent (and super-admin parent): if their family has no children yet,
-      // land them on /admin/family so they invite their first child.
-      const { count } = await createAdminClient()
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("family_id", profile.family_id)
-        .eq("role", "child");
+      // Parent (and super-admin parent) routing priority:
+      //   no chores         → /admin/onboarding (the moat)
+      //   no children       → /admin/family
+      //   everything set up → /admin/dashboard
+      const admin = createAdminClient();
+      const [choreCountRes, childCountRes] = await Promise.all([
+        admin
+          .from("chores")
+          .select("id", { count: "exact", head: true })
+          .eq("family_id", profile.family_id),
+        admin
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("family_id", profile.family_id)
+          .eq("role", "child"),
+      ]);
 
-      const target = (count ?? 0) > 0 ? "/admin/dashboard" : "/admin/family";
+      let target = "/admin/dashboard";
+      if ((choreCountRes.count ?? 0) === 0) target = "/admin/onboarding";
+      else if ((childCountRes.count ?? 0) === 0) target = "/admin/family";
       return NextResponse.redirect(`${origin}${target}`);
     }
   }

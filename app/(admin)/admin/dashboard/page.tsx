@@ -2,9 +2,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getTodayIST, getDayOfWeek, getChoresForDay, computeOverallStreak } from "@/lib/streak-calculator";
 import { getLevelInfo } from "@/lib/points-calculator";
-import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
 import UserMirror from "@/components/admin/UserMirror";
 import StreakFlame from "@/components/gamification/StreakFlame";
+import ChildPicker from "@/components/admin/ChildPicker";
 import Link from "next/link";
 import type { Chore, ChoreCompletion, DailyBonus, UserBadge, Streak } from "@/lib/types";
 
@@ -17,7 +18,10 @@ export default async function AdminDashboard({
   if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
-  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
+  const [child, allChildren] = await Promise.all([
+    resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin),
+    getChildrenOfFamily(ctx.familyId),
+  ]);
 
   const today = getTodayIST();
   const todayDow = getDayOfWeek(today);
@@ -85,7 +89,7 @@ export default async function AdminDashboard({
     { href: "/admin/calendar", icon: "📅", label: "Calendar View" },
     { href: "/admin/points", icon: "💰", label: "Points Override" },
     { href: "/admin/family", icon: "👨‍👩‍👧", label: "Family" },
-    { href: "/admin/view-as-user", icon: "👁️", label: `View as ${ridham.name?.split(" ")[0] ?? "Child"}` },
+    { href: `/admin/view-as-user?child=${ridham.id}`, icon: "👁️", label: `View as ${ridham.name?.split(" ")[0] ?? "Child"}` },
   ];
 
   return (
@@ -96,6 +100,17 @@ export default async function AdminDashboard({
           {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
         </p>
       </div>
+
+      <ChildPicker kids={allChildren} currentChildId={ridham.id} />
+
+      {chores.length === 0 && (
+        <Link
+          href="/admin/onboarding"
+          className="rounded-2xl border border-accent-amber/40 bg-accent-amber/10 px-4 py-3 text-sm text-accent-amber hover:bg-accent-amber/20 transition-colors"
+        >
+          🎮 No tasks set up yet. <span className="font-semibold underline">Run the onboarding wizard →</span>
+        </Link>
+      )}
 
       {/* Ridham's stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

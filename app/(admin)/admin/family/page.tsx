@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext } from "@/lib/auth-scope";
 import FamilyPanel from "@/components/admin/FamilyPanel";
+import FamilyNameEditor from "@/components/admin/FamilyNameEditor";
 import type { Profile, ChildInvitation, Family } from "@/lib/types";
 
 export default async function FamilyPage() {
@@ -25,7 +27,7 @@ export default async function FamilyPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-display font-bold text-2xl text-fg">Family 👨‍👩‍👧</h1>
-        <p className="text-sm text-fg-muted mt-1">{family?.name ?? "Your family"}</p>
+        <FamilyNameEditor initialName={family?.name ?? "Your family"} />
       </div>
 
       {/* Parents */}
@@ -34,9 +36,24 @@ export default async function FamilyPage() {
         <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated divide-y divide-[var(--border)]">
           {parents.map((p) => (
             <div key={p.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold text-fg">{p.name ?? p.email}</p>
-                <p className="text-xs text-fg-muted">{p.email}</p>
+              <div className="flex items-center gap-3">
+                {p.avatar_url ? (
+                  <Image
+                    src={p.avatar_url}
+                    alt={p.name ?? "Parent"}
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-bg flex items-center justify-center text-fg-muted text-sm">
+                    {(p.name ?? p.email).charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-semibold text-fg">{p.name ?? p.email}</p>
+                  <p className="text-xs text-fg-muted">{p.email}</p>
+                </div>
               </div>
               {p.is_super_admin && (
                 <span className="text-xs bg-accent-teal/20 text-accent-teal px-2 py-1 rounded-full">Super admin</span>

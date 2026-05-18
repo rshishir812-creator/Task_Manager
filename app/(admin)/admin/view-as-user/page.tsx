@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getChoresForDay, getDayOfWeek, getTodayIST, getYesterdayIST, computeOverallStreak } from "@/lib/streak-calculator";
 import { computeMilestones } from "@/lib/milestone-calculator";
-import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
+import ChildPicker from "@/components/admin/ChildPicker";
 import DashboardClient from "@/components/chores/DashboardClient";
 import type { Chore, ChoreCompletion, Streak, DailyBonus, Badge, UserBadge } from "@/lib/types";
 import Link from "next/link";
@@ -16,7 +17,10 @@ export default async function ViewAsUserPage({
   if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
-  const ridhamProfile = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
+  const [ridhamProfile, allChildren] = await Promise.all([
+    resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin),
+    getChildrenOfFamily(ctx.familyId),
+  ]);
 
   if (!ridhamProfile) {
     return (
@@ -91,6 +95,8 @@ export default async function ViewAsUserPage({
           Viewing as {ridhamProfile.name?.split(" ")[0] ?? "child"}
         </span>
       </div>
+
+      <ChildPicker kids={allChildren} currentChildId={ridhamProfile.id} />
 
       <DashboardClient
         profile={ridhamProfile}

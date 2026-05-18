@@ -2,7 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import { getTodayIST } from "@/lib/streak-calculator";
-import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
+import ChildPicker from "@/components/admin/ChildPicker";
 import Link from "next/link";
 import type { Chore, ChoreCompletion } from "@/lib/types";
 
@@ -15,7 +16,10 @@ export default async function AdminCalendarPage({
   if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
-  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
+  const [child, allChildren] = await Promise.all([
+    resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin),
+    getChildrenOfFamily(ctx.familyId),
+  ]);
 
   if (!child) {
     return (
@@ -46,6 +50,7 @@ export default async function AdminCalendarPage({
           Retroactively edit {ridham.name?.split(" ")[0] ?? "child"}&apos;s completions
         </p>
       </div>
+      <ChildPicker kids={allChildren} currentChildId={ridham.id} />
       <AdminCalendar
         chores={chores}
         completions={completions}

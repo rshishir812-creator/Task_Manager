@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import PointsOverridePanel from "@/components/admin/PointsOverridePanel";
-import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
+import ChildPicker from "@/components/admin/ChildPicker";
 import Link from "next/link";
 import type { ChoreCompletion, DailyBonus } from "@/lib/types";
 
@@ -14,7 +15,10 @@ export default async function AdminPointsPage({
   if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
-  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
+  const [child, allChildren] = await Promise.all([
+    resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin),
+    getChildrenOfFamily(ctx.familyId),
+  ]);
 
   if (!child) {
     return (
@@ -53,6 +57,7 @@ export default async function AdminPointsPage({
           Award bonus or deduct points from {ridham.name?.split(" ")[0] ?? "child"}&apos;s total
         </p>
       </div>
+      <ChildPicker kids={allChildren} currentChildId={ridham.id} />
       <PointsOverridePanel
         userId={ridham.id}
         userName={ridham.name?.split(" ")[0] ?? "child"}
