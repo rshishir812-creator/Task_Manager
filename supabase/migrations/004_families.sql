@@ -118,7 +118,9 @@ create unique index if not exists chores_title_family_unique on public.chores (t
 -- 6. HELPER FUNCTIONS (replace old is_admin)
 -- ============================================================
 
-drop function if exists public.is_admin(uuid);
+-- Drop the old helper AND every policy that referenced it. We recreate all
+-- policies in step 8 below, so cascading them away here is safe and idempotent.
+drop function if exists public.is_admin(uuid) cascade;
 
 create or replace function public.my_family_id() returns uuid
 language sql stable security definer set search_path = public
