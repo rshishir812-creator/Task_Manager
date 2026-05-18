@@ -28,7 +28,7 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
   }
 
   const handleCreate = useCallback(
-    async (data: Omit<Chore, "id" | "created_at" | "created_by">) => {
+    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id">) => {
       const res = await fetch("/api/admin/chores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -45,7 +45,7 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
   );
 
   const handleUpdate = useCallback(
-    async (data: Omit<Chore, "id" | "created_at" | "created_by">) => {
+    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id">) => {
       if (!editing) return;
       const res = await fetch(`/api/admin/chores/${editing.id}`, {
         method: "PATCH",

@@ -21,11 +21,21 @@ export async function POST(request: NextRequest) {
 
   const adminClient = createAdminClient();
 
-  // Fetch chore for points
+  // Resolve the requester's family — every chore/badge query is scoped to it
+  const { data: profileData } = await adminClient
+    .from("profiles")
+    .select("family_id")
+    .eq("id", user.id)
+    .single() as { data: { family_id: string } | null; error: unknown };
+  if (!profileData) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  const familyId = profileData.family_id;
+
+  // Fetch chore for points (must belong to user's family)
   const { data: chore } = await adminClient
     .from("chores")
     .select("*")
     .eq("id", choreId)
+    .eq("family_id", familyId)
     .single() as { data: Chore | null; error: unknown };
 
   if (!chore) return NextResponse.json({ error: "Chore not found" }, { status: 404 });
@@ -61,7 +71,8 @@ export async function POST(request: NextRequest) {
   const { data: allChores } = await adminClient
     .from("chores")
     .select("*")
-    .eq("is_active", true) as { data: Chore[] | null; error: unknown };
+    .eq("is_active", true)
+    .eq("family_id", familyId) as { data: Chore[] | null; error: unknown };
 
   const completions = allCompletions ?? [];
   const chores = allChores ?? [];
@@ -142,10 +153,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Check badges
+  // Check badges (scoped to this family)
   const { data: allBadges } = await adminClient
     .from("badges")
-    .select("*") as { data: Badge[] | null; error: unknown };
+    .select("*")
+    .eq("family_id", familyId) as { data: Badge[] | null; error: unknown };
 
   const { data: userBadgesData } = await adminClient
     .from("user_badges")

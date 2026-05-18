@@ -14,9 +14,9 @@ export async function middleware(request: NextRequest) {
 
   const { user, response } = await updateSession(request);
 
-  // Helper: fetch role from profiles
-  async function getRole() {
-    if (!user) return null;
+  // Helper: fetch role + super-admin flag from profiles
+  async function getRoleAndSuper(): Promise<{ role: "parent" | "child" | null; isSuperAdmin: boolean }> {
+    if (!user) return { role: null, isSuperAdmin: false };
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,29 +30,32 @@ export async function middleware(request: NextRequest) {
     );
     const { data } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_super_admin")
       .eq("id", user.id)
-      .single() as { data: Pick<Profile, "role"> | null; error: unknown };
-    return data?.role ?? null;
+      .single() as { data: Pick<Profile, "role" | "is_super_admin"> | null; error: unknown };
+    return {
+      role: data?.role ?? null,
+      isSuperAdmin: data?.is_super_admin ?? false,
+    };
   }
 
   // Login page: redirect signed-in users to their dashboard
   if (pathname === "/login") {
     if (user) {
-      const role = await getRole();
-      const target = role === "admin" ? "/admin/dashboard" : "/dashboard";
+      const { role, isSuperAdmin } = await getRoleAndSuper();
+      const target = role === "parent" || isSuperAdmin ? "/admin/dashboard" : "/dashboard";
       return NextResponse.redirect(new URL(target, request.url));
     }
     return response;
   }
 
-  // Admin routes: require auth + admin role
+  // Admin routes: parents and super admins
   if (pathname.startsWith("/admin")) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    const role = await getRole();
-    if (role !== "admin") {
+    const { role, isSuperAdmin } = await getRoleAndSuper();
+    if (role !== "parent" && !isSuperAdmin) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return response;
@@ -71,8 +74,8 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    const role = await getRole();
-    const target = role === "admin" ? "/admin/dashboard" : "/dashboard";
+    const { role, isSuperAdmin } = await getRoleAndSuper();
+    const target = role === "parent" || isSuperAdmin ? "/admin/dashboard" : "/dashboard";
     return NextResponse.redirect(new URL(target, request.url));
   }
 

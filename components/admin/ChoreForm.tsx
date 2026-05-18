@@ -17,7 +17,7 @@ const QUICK_ICONS = ["✅","💧","🧘","🎵","🪔","🎤","🫙","📚","�
 
 interface ChoreFormProps {
   initial?: Partial<Chore>;
-  onSave: (data: Omit<Chore, "id" | "created_at" | "created_by">) => Promise<void>;
+  onSave: (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id">) => Promise<void>;
   onCancel: () => void;
 }
 

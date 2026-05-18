@@ -1,35 +1,35 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import BadgeAdminPanel from "@/components/admin/BadgeAdminPanel";
-import type { Badge, Profile, UserBadge } from "@/lib/types";
+import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import Link from "next/link";
+import type { Badge, UserBadge } from "@/lib/types";
 
-export default async function AdminBadgesPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+export default async function AdminBadgesPage({
+  searchParams,
+}: {
+  searchParams: { child?: string };
+}) {
+  const ctx = await getParentContext();
+  if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
+  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
 
-  const { data: profileData } = await adminClient
-    .from("profiles").select("role").eq("id", user.id).single() as { data: Pick<Profile, "role"> | null; error: unknown };
-  if (profileData?.role !== "admin") redirect("/dashboard");
-
-  const { data: profilesData } = await adminClient.from("profiles").select("*");
-  const profiles = (profilesData as Profile[] | null) ?? [];
-  const ridham = profiles.find((p) => p.role === "user");
-
-  if (!ridham) {
+  if (!child) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display font-bold text-2xl text-fg">Badge Management 🏅</h1>
-        <p className="text-sm text-fg-muted">No user account found yet.</p>
+        <p className="text-sm text-fg-muted">No children added yet.</p>
+        <Link href="/admin/family" className="text-sm text-accent-amber">Add a child →</Link>
       </div>
     );
   }
 
+  const ridham = child;
+
   const [{ data: badgesData }, { data: userBadgesData }] = await Promise.all([
-    adminClient.from("badges").select("*").order("badge_type").order("threshold"),
+    adminClient.from("badges").select("*").eq("family_id", ctx.familyId).order("badge_type").order("threshold"),
     adminClient.from("user_badges").select("*").eq("user_id", ridham.id),
   ]);
 

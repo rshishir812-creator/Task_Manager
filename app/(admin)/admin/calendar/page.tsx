@@ -1,36 +1,36 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import { getTodayIST } from "@/lib/streak-calculator";
-import type { Chore, ChoreCompletion, Profile } from "@/lib/types";
+import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import Link from "next/link";
+import type { Chore, ChoreCompletion } from "@/lib/types";
 
-export default async function AdminCalendarPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+export default async function AdminCalendarPage({
+  searchParams,
+}: {
+  searchParams: { child?: string };
+}) {
+  const ctx = await getParentContext();
+  if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
+  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
 
-  const { data: profileData } = await adminClient
-    .from("profiles").select("role").eq("id", user.id).single() as { data: Pick<Profile, "role"> | null; error: unknown };
-  if (profileData?.role !== "admin") redirect("/dashboard");
-
-  const { data: profilesData } = await adminClient.from("profiles").select("*");
-  const profiles = (profilesData as Profile[] | null) ?? [];
-  const ridham = profiles.find((p) => p.role === "user");
-
-  if (!ridham) {
+  if (!child) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display font-bold text-2xl text-fg">Calendar View 📅</h1>
-        <p className="text-sm text-fg-muted">No user account found yet.</p>
+        <p className="text-sm text-fg-muted">No children added yet.</p>
+        <Link href="/admin/family" className="text-sm text-accent-amber">Add a child →</Link>
       </div>
     );
   }
 
+  const ridham = child;
+
   const [{ data: choresData }, { data: completionsData }] = await Promise.all([
-    adminClient.from("chores").select("*").eq("is_active", true).order("sort_order"),
+    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", ctx.familyId).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", ridham.id),
   ]);
 
@@ -43,7 +43,7 @@ export default async function AdminCalendarPage() {
       <div>
         <h1 className="font-display font-bold text-2xl text-fg">Calendar View 📅</h1>
         <p className="text-sm text-fg-muted mt-1">
-          Retroactively edit {ridham.name?.split(" ")[0] ?? "Ridham"}&apos;s completions
+          Retroactively edit {ridham.name?.split(" ")[0] ?? "child"}&apos;s completions
         </p>
       </div>
       <AdminCalendar

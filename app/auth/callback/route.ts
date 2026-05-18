@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
@@ -9,9 +10,6 @@ export async function GET(request: NextRequest) {
   const errorDescription = searchParams.get("error_description") ?? "";
 
   if (error) {
-    if (errorDescription.toLowerCase().includes("not authorized for chorequest")) {
-      return NextResponse.redirect(`${origin}/access-denied`);
-    }
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent(errorDescription || "Authentication failed")}`
     );
@@ -22,8 +20,9 @@ export async function GET(request: NextRequest) {
     const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
 
     if (exchangeErr) {
-      // Treat any exchange failure on first login as possible access denial
-      return NextResponse.redirect(`${origin}/access-denied`);
+      return NextResponse.redirect(
+        `${origin}/login?error=${encodeURIComponent(exchangeErr.message || "Sign-in failed")}`
+      );
     }
 
     const {
@@ -31,13 +30,32 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (user) {
-      const { data: profile } = await supabase
+      // Use the admin client so RLS doesn't bite during this initial lookup
+      // (the profile row was just created by the handle_new_user trigger).
+      const { data: profile } = await createAdminClient()
         .from("profiles")
-        .select("role")
+        .select("id, role, family_id, is_super_admin")
         .eq("id", user.id)
-        .single() as { data: Pick<Profile, "role"> | null; error: unknown };
+        .single() as { data: Pick<Profile, "id" | "role" | "family_id" | "is_super_admin"> | null; error: unknown };
 
-      const target = profile?.role === "admin" ? "/admin/dashboard" : "/dashboard";
+      if (!profile) {
+        return NextResponse.redirect(`${origin}/login`);
+      }
+
+      // Children always go to their dashboard
+      if (profile.role === "child") {
+        return NextResponse.redirect(`${origin}/dashboard`);
+      }
+
+      // Parent (and super-admin parent): if their family has no children yet,
+      // land them on /admin/family so they invite their first child.
+      const { count } = await createAdminClient()
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("family_id", profile.family_id)
+        .eq("role", "child");
+
+      const target = (count ?? 0) > 0 ? "/admin/dashboard" : "/admin/family";
       return NextResponse.redirect(`${origin}${target}`);
     }
   }

@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Profile } from "@/lib/types";
-
-async function requireAdmin() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  const { data } = await createAdminClient()
-    .from("profiles").select("role").eq("id", user.id).single() as { data: Pick<Profile, "role"> | null; error: unknown };
-  return data?.role === "admin";
-}
+import { getParentContext } from "@/lib/auth-scope";
 
 export async function POST(request: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const ctx = await getParentContext();
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { ids } = await request.json() as { ids: string[] };
   const adminClient = createAdminClient();
+
+  // Verify all ids belong to this family before reordering
+  const { data: rows } = await adminClient
+    .from("chores")
+    .select("id, family_id")
+    .in("id", ids);
+  const all = (rows as { id: string; family_id: string }[] | null) ?? [];
+  const allInFamily = all.length === ids.length && all.every((r) => r.family_id === ctx.familyId);
+  if (!allInFamily && !ctx.isSuperAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   await Promise.all(
     ids.map((id, index) =>

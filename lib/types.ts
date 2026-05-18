@@ -1,5 +1,11 @@
-export type Role = "admin" | "user";
+export type Role = "parent" | "child";
 export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export interface Family {
+  id: string;
+  name: string;
+  created_at: string;
+}
 
 export interface Profile {
   id: string;
@@ -8,7 +14,18 @@ export interface Profile {
   avatar_url: string | null;
   role: Role;
   timezone: string;
+  family_id: string;
+  is_super_admin: boolean;
   created_at: string;
+}
+
+export interface ChildInvitation {
+  id: string;
+  family_id: string;
+  email: string;
+  invited_by: string | null;
+  created_at: string;
+  accepted_at: string | null;
 }
 
 export interface Chore {
@@ -19,6 +36,7 @@ export interface Chore {
   points: number;
   recurrence: DayOfWeek[];
   is_active: boolean;
+  family_id: string;
   created_by: string | null;
   created_at: string;
   sort_order: number;
@@ -64,6 +82,7 @@ export interface Badge {
   badge_type: BadgeType;
   threshold: number | null;
   chore_id: string | null;
+  family_id: string;
 }
 
 export interface UserBadge {
@@ -77,6 +96,8 @@ export interface UserBadge {
 export type Database = {
   public: {
     Tables: {
+      families: { Row: Family; Insert: Omit<Family, "id" | "created_at"> & { id?: string }; Update: Partial<Family> };
+      child_invitations: { Row: ChildInvitation; Insert: Omit<ChildInvitation, "id" | "created_at"> & { id?: string }; Update: Partial<ChildInvitation> };
       profiles: { Row: Profile; Insert: Omit<Profile, "created_at">; Update: Partial<Profile> };
       chores: { Row: Chore; Insert: Omit<Chore, "id" | "created_at">; Update: Partial<Chore> };
       chore_completions: { Row: ChoreCompletion; Insert: Omit<ChoreCompletion, "id">; Update: Partial<ChoreCompletion> };

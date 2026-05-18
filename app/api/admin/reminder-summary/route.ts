@@ -1,36 +1,40 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTodayIST, getDayOfWeek, getChoresForDay } from "@/lib/streak-calculator";
+import { getParentContext } from "@/lib/auth-scope";
 import type { Chore, ChoreCompletion, Profile } from "@/lib/types";
 
-async function requireAdmin() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  const { data } = await createAdminClient()
-    .from("profiles").select("role").eq("id", user.id).single() as { data: Pick<Profile, "role"> | null; error: unknown };
-  return data?.role === "admin";
-}
-
 export async function GET() {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const ctx = await getParentContext();
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const admin = createAdminClient();
   const today = getTodayIST();
   const dow = getDayOfWeek(today);
 
+  // Scope all queries to the requester's family
   const [usersRes, choresRes, completionsRes] = await Promise.all([
-    admin.from("profiles").select("id, name").eq("role", "user"),
-    admin.from("chores").select("*").eq("is_active", true),
-    admin.from("chore_completions").select("user_id, chore_id").eq("completed_date", today),
+    admin
+      .from("profiles")
+      .select("id, name")
+      .eq("role", "child")
+      .eq("family_id", ctx.familyId),
+    admin
+      .from("chores")
+      .select("*")
+      .eq("is_active", true)
+      .eq("family_id", ctx.familyId),
+    admin
+      .from("chore_completions")
+      .select("user_id, chore_id")
+      .eq("completed_date", today),
   ]);
 
   const users = (usersRes.data as Pick<Profile, "id" | "name">[]) ?? [];
   const todaysChores = getChoresForDay((choresRes.data as Chore[]) ?? [], dow);
-  const completions = (completionsRes.data as Pick<ChoreCompletion, "user_id" | "chore_id">[]) ?? [];
+  const allCompletions = (completionsRes.data as Pick<ChoreCompletion, "user_id" | "chore_id">[]) ?? [];
+  const userIdSet = new Set(users.map((u) => u.id));
+  const completions = allCompletions.filter((c) => userIdSet.has(c.user_id));
 
   const behind = users
     .map((u) => {

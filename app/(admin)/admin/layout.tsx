@@ -27,7 +27,8 @@ export default async function AdminLayout({
     .single();
 
   const profile = profileData as Profile | null;
-  if (profile?.role !== "admin") redirect("/dashboard");
+  if (!profile) redirect("/login");
+  if (profile.role !== "parent" && !profile.is_super_admin) redirect("/dashboard");
 
   return (
     <NavProgressProvider color="amber">
@@ -55,7 +56,7 @@ export default async function AdminLayout({
 
       {/* Body: sidebar + content */}
       <div className="flex flex-1">
-        <AdminNav />
+        <AdminNav isSuperAdmin={profile.is_super_admin} />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
           {children}
         </main>

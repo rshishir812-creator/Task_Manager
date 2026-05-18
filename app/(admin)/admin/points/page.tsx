@@ -1,32 +1,32 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import PointsOverridePanel from "@/components/admin/PointsOverridePanel";
-import type { ChoreCompletion, DailyBonus, Profile } from "@/lib/types";
+import { getParentContext, resolveChild } from "@/lib/auth-scope";
+import Link from "next/link";
+import type { ChoreCompletion, DailyBonus } from "@/lib/types";
 
-export default async function AdminPointsPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+export default async function AdminPointsPage({
+  searchParams,
+}: {
+  searchParams: { child?: string };
+}) {
+  const ctx = await getParentContext();
+  if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
+  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
 
-  const { data: profileData } = await adminClient
-    .from("profiles").select("role").eq("id", user.id).single() as { data: Pick<Profile, "role"> | null; error: unknown };
-  if (profileData?.role !== "admin") redirect("/dashboard");
-
-  const { data: profilesData } = await adminClient.from("profiles").select("*");
-  const profiles = (profilesData as Profile[] | null) ?? [];
-  const ridham = profiles.find((p) => p.role === "user");
-
-  if (!ridham) {
+  if (!child) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display font-bold text-2xl text-fg">Points Override 💰</h1>
-        <p className="text-sm text-fg-muted">No user account found yet.</p>
+        <p className="text-sm text-fg-muted">No children added yet.</p>
+        <Link href="/admin/family" className="text-sm text-accent-amber">Add a child →</Link>
       </div>
     );
   }
+
+  const ridham = child;
 
   const [{ data: completionsData }, { data: bonusesData }] = await Promise.all([
     adminClient.from("chore_completions").select("points_earned").eq("user_id", ridham.id),
@@ -50,12 +50,12 @@ export default async function AdminPointsPage() {
       <div>
         <h1 className="font-display font-bold text-2xl text-fg">Points Override 💰</h1>
         <p className="text-sm text-fg-muted mt-1">
-          Award bonus or deduct points from {ridham.name?.split(" ")[0] ?? "Ridham"}&apos;s total
+          Award bonus or deduct points from {ridham.name?.split(" ")[0] ?? "child"}&apos;s total
         </p>
       </div>
       <PointsOverridePanel
         userId={ridham.id}
-        userName={ridham.name?.split(" ")[0] ?? "Ridham"}
+        userName={ridham.name?.split(" ")[0] ?? "child"}
         totalPoints={totalPoints}
         initialOverrides={overrides}
       />

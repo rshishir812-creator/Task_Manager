@@ -73,6 +73,10 @@ function LoginContent() {
           Sign in with Google
         </button>
 
+        <div className="text-center text-xs text-fg-muted space-y-1.5 mt-1">
+          <p><strong className="text-fg">New here?</strong> Sign in with Google — we&apos;ll set up your family.</p>
+          <p><strong className="text-fg">Got an invite?</strong> Sign in with the email your parent used.</p>
+        </div>
       </div>
     </main>
   );

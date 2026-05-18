@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTodayIST } from "@/lib/streak-calculator";
-import type { Profile } from "@/lib/types";
-
-async function requireAdmin() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await createAdminClient()
-    .from("profiles").select("role").eq("id", user.id).single() as { data: Pick<Profile, "role"> | null; error: unknown };
-  if (data?.role !== "admin") return null;
-  return user;
-}
+import { getParentContext, isChildOfFamily } from "@/lib/auth-scope";
 
 export async function POST(request: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const ctx = await getParentContext();
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { userId, points, reason } = await request.json() as {
     userId: string;
@@ -26,6 +15,11 @@ export async function POST(request: NextRequest) {
 
   if (!reason.trim()) return NextResponse.json({ error: "Reason required" }, { status: 400 });
   if (points === 0) return NextResponse.json({ error: "Points cannot be zero" }, { status: 400 });
+
+  if (!ctx.isSuperAdmin) {
+    const ok = await isChildOfFamily(userId, ctx.familyId);
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const adminClient = createAdminClient();
 
@@ -54,12 +48,17 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const ctx = await getParentContext();
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = new URL(request.url);
   const userId = url.searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+
+  if (!ctx.isSuperAdmin) {
+    const ok = await isChildOfFamily(userId, ctx.familyId);
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // Return all "override" entries (dates >= 9000)
   const { data } = await createAdminClient()

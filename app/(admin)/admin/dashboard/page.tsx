@@ -1,41 +1,45 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getTodayIST, getDayOfWeek, getChoresForDay, computeOverallStreak } from "@/lib/streak-calculator";
 import { getLevelInfo } from "@/lib/points-calculator";
+import { getParentContext, resolveChild } from "@/lib/auth-scope";
 import UserMirror from "@/components/admin/UserMirror";
 import StreakFlame from "@/components/gamification/StreakFlame";
 import Link from "next/link";
-import type { Profile, Chore, ChoreCompletion, DailyBonus, UserBadge, Streak } from "@/lib/types";
+import type { Chore, ChoreCompletion, DailyBonus, UserBadge, Streak } from "@/lib/types";
 
-export default async function AdminDashboard() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: { child?: string };
+}) {
+  const ctx = await getParentContext();
+  if (!ctx) redirect("/login");
 
   const adminClient = createAdminClient();
-
-  // Get Ridham's profile (the user)
-  const { data: profilesData } = await adminClient
-    .from("profiles")
-    .select("*");
-
-  const profiles = (profilesData as Profile[] | null) ?? [];
-  const ridham = profiles.find((p) => p.role === "user");
+  const child = await resolveChild(ctx.familyId, searchParams, ctx.isSuperAdmin);
 
   const today = getTodayIST();
   const todayDow = getDayOfWeek(today);
 
-  if (!ridham) {
+  if (!child) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="font-display font-bold text-2xl text-fg">Admin Overview</h1>
+        <h1 className="font-display font-bold text-2xl text-fg">Family Overview</h1>
         <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-8 text-center">
-          <p className="text-fg-muted">No user account found yet. Ridham hasn&apos;t logged in.</p>
+          <p className="text-fg-muted mb-4">No children added yet.</p>
+          <Link
+            href="/admin/family"
+            className="inline-block rounded-xl bg-accent-amber/20 text-accent-amber px-4 py-2 text-sm font-semibold hover:bg-accent-amber/40 transition-colors"
+          >
+            Add your first child →
+          </Link>
         </div>
       </div>
     );
   }
+
+  const ridham = child;
 
   const [
     { data: choresData },
@@ -44,7 +48,7 @@ export default async function AdminDashboard() {
     { data: bonusesData },
     { data: userBadgesData },
   ] = await Promise.all([
-    adminClient.from("chores").select("*").eq("is_active", true).order("sort_order"),
+    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", ctx.familyId).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", ridham.id),
     adminClient.from("streaks").select("*").eq("user_id", ridham.id),
     adminClient.from("daily_bonuses").select("*").eq("user_id", ridham.id),
@@ -80,7 +84,8 @@ export default async function AdminDashboard() {
     { href: "/admin/badges", icon: "🏅", label: "Manage Badges" },
     { href: "/admin/calendar", icon: "📅", label: "Calendar View" },
     { href: "/admin/points", icon: "💰", label: "Points Override" },
-    { href: "/admin/view-as-user", icon: "👁️", label: "View as Ridham" },
+    { href: "/admin/family", icon: "👨‍👩‍👧", label: "Family" },
+    { href: "/admin/view-as-user", icon: "👁️", label: `View as ${ridham.name?.split(" ")[0] ?? "Child"}` },
   ];
 
   return (
