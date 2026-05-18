@@ -9,7 +9,7 @@ import {
   type PresetChore,
   ALL_DAYS,
 } from "@/lib/chore-presets";
-import type { DayOfWeek } from "@/lib/types";
+import type { DayOfWeek, Profile } from "@/lib/types";
 
 type WizardChore = PresetChore & { included: boolean };
 
@@ -18,9 +18,18 @@ const DAY_LABELS: { key: DayOfWeek; label: string }[] = [
   { key: "thu", label: "T" }, { key: "fri", label: "F" }, { key: "sat", label: "S" }, { key: "sun", label: "S" },
 ];
 
-export default function OnboardingWizard() {
+interface OnboardingWizardProps {
+  kids: Profile[];
+}
+
+export default function OnboardingWizard({ kids }: OnboardingWizardProps) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  // Step 0 is the child picker. Auto-skip if there's only one child.
+  const initialStep = kids.length === 1 ? 1 : 0;
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(initialStep);
+  const [targetChildId, setTargetChildId] = useState<string | null>(
+    kids.length === 1 ? (kids[0]?.id ?? null) : null,
+  );
   const [bracket, setBracket] = useState<AgeBracket | null>(null);
   const [list, setList] = useState<WizardChore[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -81,6 +90,7 @@ export default function OnboardingWizard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          targetChildId,
           chores: selected.map(({ title, icon, points, recurrence }) => ({
             title: title.trim() || "Untitled task",
             icon,
@@ -109,11 +119,14 @@ export default function OnboardingWizard() {
     router.push("/admin/dashboard");
   }
 
+  const targetChildName = kids.find((k) => k.id === targetChildId)?.name?.split(" ")[0] ?? "your child";
+  const steps: number[] = kids.length > 1 ? [0, 1, 2, 3, 4] : [1, 2, 3, 4];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Step indicator */}
       <div className="flex items-center gap-2 text-xs text-fg-muted">
-        {[1, 2, 3, 4].map((s) => (
+        {steps.map((s) => (
           <span
             key={s}
             className={`flex-1 h-1 rounded-full ${
@@ -123,12 +136,38 @@ export default function OnboardingWizard() {
         ))}
       </div>
 
+      {step === 0 && (
+        <div className="flex flex-col gap-4">
+          <h2 className="font-display font-bold text-xl text-fg">Who are these tasks for?</h2>
+          <p className="text-sm text-fg-muted">
+            Pick the child. You can run the wizard again later for siblings.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {kids.map((k) => (
+              <button
+                key={k.id}
+                onClick={() => { setTargetChildId(k.id); setStep(1); }}
+                className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-5 text-left hover:border-accent-amber hover:bg-accent-amber/5 transition-colors"
+              >
+                <p className="font-display font-bold text-lg text-fg">{k.name ?? k.email}</p>
+                <p className="text-xs text-fg-muted mt-1">{k.email}</p>
+              </button>
+            ))}
+          </div>
+          <button onClick={skip} className="text-xs text-fg-muted hover:text-fg self-start mt-2">
+            Skip — I&apos;ll set up manually
+          </button>
+        </div>
+      )}
+
       {step === 1 && (
         <div className="text-center flex flex-col items-center gap-4 py-6">
           <div className="text-5xl">🎮</div>
-          <h1 className="font-display font-bold text-2xl text-fg">Welcome to ChoreQuest</h1>
+          <h1 className="font-display font-bold text-2xl text-fg">
+            {kids.length === 1 ? "Welcome to ChoreQuest" : `Setting up for ${targetChildName}`}
+          </h1>
           <p className="text-sm text-fg-muted max-w-md">
-            Let&apos;s set up tasks for your child. We&apos;ll suggest a starter list based on age — you can customise everything before you save. Each task automatically gets a 7-tier streak ladder.
+            Let&apos;s set up tasks for {targetChildName}. We&apos;ll suggest a starter list based on age — you can customise everything before you save. Each task automatically gets a 7-tier streak ladder.
           </p>
           <button
             onClick={() => setStep(2)}
@@ -161,7 +200,7 @@ export default function OnboardingWizard() {
               </button>
             ))}
           </div>
-          <button onClick={() => setStep(1)} className="text-xs text-fg-muted hover:text-fg self-start">← Back</button>
+          <button onClick={() => setStep(kids.length > 1 ? 0 : 1)} className="text-xs text-fg-muted hover:text-fg self-start">← Back</button>
         </div>
       )}
 
@@ -264,7 +303,7 @@ export default function OnboardingWizard() {
         <div className="flex flex-col gap-4">
           <h2 className="font-display font-bold text-xl text-fg">Ready to create</h2>
           <p className="text-sm text-fg-muted">
-            We&apos;ll create {selected.length} task{selected.length === 1 ? "" : "s"} for your family. Each task gets its own streak ladder (3 → 100 days). You can edit, add, or remove tasks any time.
+            We&apos;ll create {selected.length} task{selected.length === 1 ? "" : "s"} for <span className="text-fg font-semibold">{targetChildName}</span>. Each task gets its own streak ladder (3 → 100 days). You can edit, add, or remove tasks any time.
           </p>
           <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated divide-y divide-[var(--border)]">
             {selected.map((c, i) => (

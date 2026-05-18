@@ -14,7 +14,7 @@ const baloo = Baloo_2({
 
 export const metadata: Metadata = {
   title: "ChoreQuest",
-  description: "Ridham's gamified daily chores adventure",
+  description: "Gamified daily chores adventure",
 };
 
 export default function RootLayout({

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getChoresForDay, getDayOfWeek, getTodayIST, getYesterdayIST, computeOverallStreak } from "@/lib/streak-calculator";
 import { computeMilestones } from "@/lib/milestone-calculator";
-import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily, getAssignedChoreIds } from "@/lib/auth-scope";
 import ChildPicker from "@/components/admin/ChildPicker";
 import DashboardClient from "@/components/chores/DashboardClient";
 import type { Chore, ChoreCompletion, Streak, DailyBonus, Badge, UserBadge } from "@/lib/types";
@@ -42,6 +42,7 @@ export default async function ViewAsUserPage({
     { data: bonusesData },
     { data: badgesData },
     { data: userBadgesData },
+    assignedIds,
   ] = await Promise.all([
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", childFamilyId).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", ridhamProfile.id),
@@ -49,9 +50,11 @@ export default async function ViewAsUserPage({
     adminClient.from("daily_bonuses").select("*").eq("user_id", ridhamProfile.id),
     adminClient.from("badges").select("*").eq("family_id", childFamilyId),
     adminClient.from("user_badges").select("*").eq("user_id", ridhamProfile.id),
+    getAssignedChoreIds(ridhamProfile.id),
   ]);
 
-  const chores = (choresData as Chore[] | null) ?? [];
+  const allChores = (choresData as Chore[] | null) ?? [];
+  const chores = allChores.filter((c) => assignedIds.has(c.id));
   const allCompletions = (completionsData as ChoreCompletion[] | null) ?? [];
   const streaks = (streaksData as Streak[] | null) ?? [];
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];

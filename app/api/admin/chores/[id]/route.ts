@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getParentContext } from "@/lib/auth-scope";
+import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
 import type { Chore } from "@/lib/types";
 
 export async function PATCH(
@@ -11,8 +11,8 @@ export async function PATCH(
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Verify the chore belongs to this parent's family before letting them edit
-  const adminClientForCheck = createAdminClient();
-  const { data: existingChore } = await adminClientForCheck
+  const adminClient = createAdminClient();
+  const { data: existingChore } = await adminClient
     .from("chores")
     .select("family_id")
     .eq("id", params.id)
@@ -22,12 +22,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json() as Partial<Chore>;
+  const body = await request.json() as Partial<Chore> & { assignedTo?: string[] };
+  const { assignedTo, ...choreFields } = body;
   // Never allow callers to change family_id via PATCH
-  delete (body as { family_id?: string }).family_id;
-  const { data, error } = await createAdminClient()
+  delete (choreFields as { family_id?: string }).family_id;
+  const { data, error } = await adminClient
     .from("chores")
-    .update(body)
+    .update(choreFields)
     .eq("id", params.id)
     .select()
     .single();
@@ -47,7 +48,6 @@ export async function PATCH(
       { days: 50,  icon: "👑", label: "50-Day"  },
       { days: 100, icon: "🌟", label: "100-Day" },
     ];
-    const adminClient = createAdminClient();
     const { data: existingBadges } = await adminClient
       .from("badges")
       .select("id, threshold")
@@ -70,6 +70,21 @@ export async function PATCH(
             .eq("id", badge.id);
         })
       );
+    }
+  }
+
+  // Handle assignedTo update if provided
+  if (Array.isArray(assignedTo)) {
+    const allChildren = await getChildrenOfFamily(ctx.familyId);
+    const familyChildIds = new Set(allChildren.map((c) => c.id));
+    const targetIds = assignedTo.filter((id) => familyChildIds.has(id));
+
+    // Replace assignments: delete existing, insert new
+    await adminClient.from("chore_assignments").delete().eq("chore_id", params.id);
+    if (targetIds.length > 0) {
+      await adminClient
+        .from("chore_assignments")
+        .insert(targetIds.map((user_id) => ({ chore_id: params.id, user_id })));
     }
   }
 

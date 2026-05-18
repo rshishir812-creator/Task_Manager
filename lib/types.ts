@@ -24,8 +24,14 @@ export interface ChildInvitation {
   family_id: string;
   email: string;
   invited_by: string | null;
+  role: Role;
   created_at: string;
   accepted_at: string | null;
+}
+
+export interface ChoreAssignment {
+  chore_id: string;
+  user_id: string;
 }
 
 export interface Chore {
@@ -105,6 +111,7 @@ export type Database = {
       streaks: { Row: Streak; Insert: Omit<Streak, "id">; Update: Partial<Streak> };
       badges: { Row: Badge; Insert: Omit<Badge, "id">; Update: Partial<Badge> };
       user_badges: { Row: UserBadge; Insert: Omit<UserBadge, "id" | "earned_at">; Update: Partial<UserBadge> };
+      chore_assignments: { Row: ChoreAssignment; Insert: ChoreAssignment; Update: Partial<ChoreAssignment> };
     };
     Views: Record<string, unknown>;
     Functions: Record<string, unknown>;

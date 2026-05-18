@@ -64,9 +64,10 @@ export async function GET(request: NextRequest) {
           .eq("role", "child"),
       ]);
 
+      // Children must exist before the wizard can run (wizard targets a specific child)
       let target = "/admin/dashboard";
-      if ((choreCountRes.count ?? 0) === 0) target = "/admin/onboarding";
-      else if ((childCountRes.count ?? 0) === 0) target = "/admin/family";
+      if ((childCountRes.count ?? 0) === 0) target = "/admin/family";
+      else if ((choreCountRes.count ?? 0) === 0) target = "/admin/onboarding";
       return NextResponse.redirect(`${origin}${target}`);
     }
   }

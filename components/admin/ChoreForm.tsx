@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Chore, DayOfWeek } from "@/lib/types";
+import type { Chore, DayOfWeek, Profile } from "@/lib/types";
 
 const DAYS: { key: DayOfWeek; label: string }[] = [
   { key: "mon", label: "Mon" },
@@ -17,11 +17,15 @@ const QUICK_ICONS = ["✅","💧","🧘","🎵","🪔","🎤","🫙","📚","�
 
 interface ChoreFormProps {
   initial?: Partial<Chore>;
-  onSave: (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id">) => Promise<void>;
+  /** All children in the parent's family. */
+  kids?: Profile[];
+  /** Children currently assigned to this chore (only relevant for edits). */
+  initialAssignedTo?: string[];
+  onSave: (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id"> & { assignedTo: string[] }) => Promise<void>;
   onCancel: () => void;
 }
 
-export default function ChoreForm({ initial, onSave, onCancel }: ChoreFormProps) {
+export default function ChoreForm({ initial, kids = [], initialAssignedTo, onSave, onCancel }: ChoreFormProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [icon, setIcon] = useState(initial?.icon ?? "✅");
@@ -30,12 +34,22 @@ export default function ChoreForm({ initial, onSave, onCancel }: ChoreFormProps)
     initial?.recurrence ?? ["mon","tue","wed","thu","fri","sat","sun"]
   );
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
+  // Default: all current children selected (matches API default when assignedTo is omitted)
+  const [assignedTo, setAssignedTo] = useState<string[]>(
+    initialAssignedTo ?? kids.map((k) => k.id),
+  );
   const [saving, setSaving] = useState(false);
   const [customIcon, setCustomIcon] = useState("");
 
   function toggleDay(day: DayOfWeek) {
     setRecurrence((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  }
+
+  function toggleAssigned(kidId: string) {
+    setAssignedTo((prev) =>
+      prev.includes(kidId) ? prev.filter((id) => id !== kidId) : [...prev, kidId],
     );
   }
 
@@ -52,6 +66,7 @@ export default function ChoreForm({ initial, onSave, onCancel }: ChoreFormProps)
         recurrence,
         is_active: isActive,
         sort_order: initial?.sort_order ?? 99,
+        assignedTo,
       });
     } finally {
       setSaving(false);
@@ -176,6 +191,35 @@ export default function ChoreForm({ initial, onSave, onCancel }: ChoreFormProps)
           </button>
         </div>
       </div>
+
+      {/* Applies to (per-child assignment) */}
+      {kids.length > 0 && (
+        <div>
+          <label className="block text-sm font-semibold text-fg mb-1.5">Applies to</label>
+          <div className="flex gap-1.5 flex-wrap">
+            {kids.map((k) => {
+              const selected = assignedTo.includes(k.id);
+              return (
+                <button
+                  key={k.id}
+                  type="button"
+                  onClick={() => toggleAssigned(k.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                    selected
+                      ? "bg-accent-teal text-black border-accent-teal"
+                      : "border-[var(--border)] text-fg-muted hover:border-fg"
+                  }`}
+                >
+                  {k.name?.split(" ")[0] ?? k.email}
+                </button>
+              );
+            })}
+          </div>
+          {assignedTo.length === 0 && (
+            <p className="text-xs text-fg-muted mt-2">⚠️ No children selected — nobody will see this task.</p>
+          )}
+        </div>
+      )}
 
       {/* Active toggle */}
       <div className="flex items-center gap-3">

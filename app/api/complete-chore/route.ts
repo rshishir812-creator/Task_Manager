@@ -40,6 +40,15 @@ export async function POST(request: NextRequest) {
 
   if (!chore) return NextResponse.json({ error: "Chore not found" }, { status: 404 });
 
+  // Verify this chore is assigned to the current user
+  const { data: assignment } = await adminClient
+    .from("chore_assignments")
+    .select("chore_id")
+    .eq("chore_id", choreId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!assignment) return NextResponse.json({ error: "Not assigned" }, { status: 403 });
+
   const pointsEarned = isException ? 0 : chore.points;
 
   // Upsert completion (idempotent)

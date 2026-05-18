@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getParentContext, isChildOfFamily } from "@/lib/auth-scope";
+import { getParentContext, isChildOfFamily, isChoreAssigned } from "@/lib/auth-scope";
 
 /** Toggle a completion for a given user/chore/date */
 export async function POST(request: NextRequest) {
@@ -19,6 +19,15 @@ export async function POST(request: NextRequest) {
   if (!ctx.isSuperAdmin) {
     const ok = await isChildOfFamily(userId, ctx.familyId);
     if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Also verify the chore is assigned to this specific child (admin can't backfill
+  // completions for a chore that isn't supposed to apply to that kid).
+  if (action !== "uncomplete") {
+    const assigned = await isChoreAssigned(choreId, userId);
+    if (!assigned) {
+      return NextResponse.json({ error: "Chore is not assigned to this child" }, { status: 403 });
+    }
   }
 
   const adminClient = createAdminClient();

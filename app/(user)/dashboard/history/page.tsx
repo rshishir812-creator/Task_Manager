@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import HeatmapCalendar from "@/components/chores/HeatmapCalendar";
 import { getTodayIST } from "@/lib/streak-calculator";
-import type { Chore, ChoreCompletion } from "@/lib/types";
+import { getAssignedChoreIds } from "@/lib/auth-scope";
+import type { Chore, ChoreCompletion, Profile } from "@/lib/types";
 
 export default async function HistoryPage() {
   const supabase = createClient();
@@ -12,12 +13,19 @@ export default async function HistoryPage() {
 
   const adminClient = createAdminClient();
 
-  const [{ data: choresData }, { data: completionsData }] = await Promise.all([
-    adminClient.from("chores").select("*").eq("is_active", true).order("sort_order"),
+  const { data: profileData } = await adminClient
+    .from("profiles").select("family_id").eq("id", user.id).single();
+  const profile = profileData as Pick<Profile, "family_id"> | null;
+  if (!profile) redirect("/login");
+
+  const [{ data: choresData }, { data: completionsData }, assignedIds] = await Promise.all([
+    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", user.id),
+    getAssignedChoreIds(user.id),
   ]);
 
-  const chores = (choresData as Chore[] | null) ?? [];
+  const allChores = (choresData as Chore[] | null) ?? [];
+  const chores = allChores.filter((c) => assignedIds.has(c.id));
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
   const today = getTodayIST();
 

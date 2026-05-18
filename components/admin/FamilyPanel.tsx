@@ -20,6 +20,11 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
   const [toast, setToast] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [coparentEmail, setCoparentEmail] = useState("");
+  const [submittingCoparent, setSubmittingCoparent] = useState(false);
+
+  const childInvitations = invitations.filter((i) => i.role !== "parent");
+  const parentInvitations = invitations.filter((i) => i.role === "parent");
 
   function showToast(msg: string) {
     setToast(msg);
@@ -50,6 +55,32 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleInviteCoparent(e: React.FormEvent) {
+    e.preventDefault();
+    if (!coparentEmail.trim()) return;
+    setSubmittingCoparent(true);
+    try {
+      const res = await fetch("/api/parent/coparent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: coparentEmail.trim() }),
+      });
+      const data = await res.json() as { invitation?: ChildInvitation; error?: string };
+      if (!res.ok) {
+        showToast(data.error ?? "Failed to invite");
+        return;
+      }
+      if (data.invitation) {
+        setInvitations((prev) => [data.invitation!, ...prev]);
+        setCoparentEmail("");
+        showToast("✅ Co-parent invitation sent.");
+        router.refresh();
+      }
+    } finally {
+      setSubmittingCoparent(false);
     }
   }
 
@@ -169,12 +200,37 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
         )}
       </section>
 
-      {/* Pending invitations */}
-      {invitations.length > 0 && (
+      {/* Pending child invitations */}
+      {childInvitations.length > 0 && (
         <section>
-          <h2 className="font-display font-semibold text-fg mb-3 text-sm uppercase tracking-wide text-fg-muted">Pending invitations</h2>
+          <h2 className="font-display font-semibold text-fg mb-3 text-sm uppercase tracking-wide text-fg-muted">Pending child invitations</h2>
           <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated divide-y divide-[var(--border)]">
-            {invitations.map((inv) => (
+            {childInvitations.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-fg">{inv.email}</p>
+                  <p className="text-xs text-fg-muted">
+                    Invited {new Date(inv.created_at).toLocaleDateString("en-IN")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRevoke(inv.id)}
+                  className="text-xs text-fg-muted hover:text-red-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Pending co-parent invitations */}
+      {parentInvitations.length > 0 && (
+        <section>
+          <h2 className="font-display font-semibold text-fg mb-3 text-sm uppercase tracking-wide text-fg-muted">Pending co-parent invitations</h2>
+          <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated divide-y divide-[var(--border)]">
+            {parentInvitations.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-fg">{inv.email}</p>
@@ -231,6 +287,37 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
           </button>
           <p className="text-xs text-fg-muted">
             They&apos;ll be added when they sign in with Google using this email.
+          </p>
+        </form>
+      </section>
+
+      {/* Invite co-parent */}
+      <section>
+        <h2 className="font-display font-semibold text-fg mb-3 text-sm uppercase tracking-wide text-fg-muted">Add a co-parent</h2>
+        <form
+          onSubmit={handleInviteCoparent}
+          className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-4 flex flex-col gap-3"
+        >
+          <div>
+            <label className="text-xs text-fg-muted">Co-parent&apos;s Google email</label>
+            <input
+              type="email"
+              required
+              value={coparentEmail}
+              onChange={(e) => setCoparentEmail(e.target.value)}
+              placeholder="coparent@gmail.com"
+              className="w-full mt-1 rounded-xl bg-bg border border-[var(--border)] px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent-teal"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submittingCoparent || !coparentEmail.trim()}
+            className="self-start rounded-xl bg-accent-teal text-black font-semibold text-sm px-4 py-2 disabled:opacity-50"
+          >
+            {submittingCoparent ? "Sending…" : "Send invite"}
+          </button>
+          <p className="text-xs text-fg-muted">
+            They&apos;ll have full access to manage chores, badges, and points for everyone in this family.
           </p>
         </form>
       </section>

@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getParentContext } from "@/lib/auth-scope";
+import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
 import type { Chore } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   const ctx = await getParentContext();
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await request.json() as Omit<Chore, "id" | "created_at" | "family_id">;
+  const body = await request.json() as Omit<Chore, "id" | "created_at" | "family_id"> & {
+    assignedTo?: string[];
+  };
+  const { assignedTo, ...choreFields } = body;
 
-  const { data, error } = await createAdminClient()
+  const adminClient = createAdminClient();
+
+  const { data, error } = await adminClient
     .from("chores")
-    .insert({ ...body, created_by: ctx.user.id, family_id: ctx.familyId })
+    .insert({ ...choreFields, created_by: ctx.user.id, family_id: ctx.familyId })
     .select()
     .single();
 
@@ -40,7 +45,20 @@ export async function POST(request: NextRequest) {
     badge_type: "streak" as const,
     family_id: ctx.familyId,
   }));
-  await createAdminClient().from("badges").insert(badges).select();
+  await adminClient.from("badges").upsert(badges, { onConflict: "code,family_id" });
+
+  // Assign the chore to the requested children (or all current children if omitted)
+  const allChildren = await getChildrenOfFamily(ctx.familyId);
+  const familyChildIds = new Set(allChildren.map((c) => c.id));
+  const targetIds = (assignedTo && Array.isArray(assignedTo))
+    ? assignedTo.filter((id) => familyChildIds.has(id))
+    : allChildren.map((c) => c.id);
+
+  if (targetIds.length > 0) {
+    await adminClient
+      .from("chore_assignments")
+      .insert(targetIds.map((user_id) => ({ chore_id: chore.id, user_id })));
+  }
 
   return NextResponse.json({ chore });
 }

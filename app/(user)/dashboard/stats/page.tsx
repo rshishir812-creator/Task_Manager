@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getLevelInfo } from "@/lib/points-calculator";
 import { getTodayIST } from "@/lib/streak-calculator";
+import { getAssignedChoreIds } from "@/lib/auth-scope";
 import XPBar from "@/components/gamification/XPBar";
 import StreakFlame from "@/components/gamification/StreakFlame";
-import type { Chore, ChoreCompletion, Streak, DailyBonus } from "@/lib/types";
+import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile } from "@/lib/types";
 
 function startOf(period: "week" | "month", today: string): string {
   if (period === "month") return today.slice(0, 8) + "01";
@@ -22,19 +23,27 @@ export default async function StatsPage() {
 
   const adminClient = createAdminClient();
 
+  const { data: profileData } = await adminClient
+    .from("profiles").select("family_id").eq("id", user.id).single();
+  const profile = profileData as Pick<Profile, "family_id"> | null;
+  if (!profile) redirect("/login");
+
   const [
     { data: choresData },
     { data: completionsData },
     { data: streaksData },
     { data: bonusesData },
+    assignedIds,
   ] = await Promise.all([
-    adminClient.from("chores").select("*").eq("is_active", true).order("sort_order"),
+    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", user.id),
     adminClient.from("streaks").select("*").eq("user_id", user.id),
     adminClient.from("daily_bonuses").select("*").eq("user_id", user.id),
+    getAssignedChoreIds(user.id),
   ]);
 
-  const chores = (choresData as Chore[] | null) ?? [];
+  const allChores = (choresData as Chore[] | null) ?? [];
+  const chores = allChores.filter((c) => assignedIds.has(c.id));
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
   const streaks = (streaksData as Streak[] | null) ?? [];
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];

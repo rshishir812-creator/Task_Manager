@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getParentContext } from "@/lib/auth-scope";
+import { getParentContext, getChildrenOfFamily, isChildOfFamily } from "@/lib/auth-scope";
 import type { Chore, DayOfWeek } from "@/lib/types";
 
 interface PresetChoreInput {
@@ -27,12 +27,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Only parents can onboard" }, { status: 403 });
   }
 
-  const { chores } = await request.json() as { chores: PresetChoreInput[] };
+  const { chores, targetChildId } = await request.json() as {
+    chores: PresetChoreInput[];
+    targetChildId?: string;
+  };
   if (!Array.isArray(chores) || chores.length === 0) {
     return NextResponse.json({ error: "Provide at least one chore" }, { status: 400 });
   }
   if (chores.length > 30) {
     return NextResponse.json({ error: "Max 30 chores at a time" }, { status: 400 });
+  }
+
+  // Resolve the target child(ren) for the new chores
+  let targetIds: string[];
+  if (targetChildId) {
+    const isChild = await isChildOfFamily(targetChildId, ctx.familyId);
+    if (!isChild) return NextResponse.json({ error: "Invalid child" }, { status: 400 });
+    targetIds = [targetChildId];
+  } else {
+    const allChildren = await getChildrenOfFamily(ctx.familyId);
+    if (allChildren.length === 0) {
+      return NextResponse.json({ error: "Invite a child first" }, { status: 400 });
+    }
+    targetIds = allChildren.map((c) => c.id);
   }
 
   const adminClient = createAdminClient();
@@ -76,6 +93,14 @@ export async function POST(request: NextRequest) {
   if (badgeRows.length > 0) {
     // Skip silently on duplicates (re-onboarding scenarios) — composite (code, family_id) is unique
     await adminClient.from("badges").upsert(badgeRows, { onConflict: "code,family_id" });
+  }
+
+  // Assign every new chore to every target child
+  const assignmentRows = createdChores.flatMap((chore) =>
+    targetIds.map((user_id) => ({ chore_id: chore.id, user_id })),
+  );
+  if (assignmentRows.length > 0) {
+    await adminClient.from("chore_assignments").insert(assignmentRows);
   }
 
   return NextResponse.json({ created: createdChores.length });

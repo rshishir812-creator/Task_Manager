@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import BadgeTile from "@/components/gamification/BadgeTile";
 import { computeMilestones } from "@/lib/milestone-calculator";
 import { getTodayIST } from "@/lib/streak-calculator";
-import type { Badge, Chore, ChoreCompletion, UserBadge } from "@/lib/types";
+import { getAssignedChoreIds } from "@/lib/auth-scope";
+import type { Badge, Chore, ChoreCompletion, UserBadge, Profile } from "@/lib/types";
 
 export default async function BadgesPage() {
   const supabase = createClient();
@@ -13,21 +14,29 @@ export default async function BadgesPage() {
 
   const adminClient = createAdminClient();
 
+  const { data: profileData } = await adminClient
+    .from("profiles").select("family_id").eq("id", user.id).single();
+  const profile = profileData as Pick<Profile, "family_id"> | null;
+  if (!profile) redirect("/login");
+
   const [
     { data: badgesData },
     { data: userBadgesData },
     { data: choresData },
     { data: completionsData },
+    assignedIds,
   ] = await Promise.all([
-    adminClient.from("badges").select("*").order("badge_type").order("threshold"),
+    adminClient.from("badges").select("*").eq("family_id", profile.family_id).order("badge_type").order("threshold"),
     adminClient.from("user_badges").select("*").eq("user_id", user.id),
-    adminClient.from("chores").select("*").eq("is_active", true),
+    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id),
     adminClient.from("chore_completions").select("*").eq("user_id", user.id),
+    getAssignedChoreIds(user.id),
   ]);
 
   const badges = (badgesData as Badge[] | null) ?? [];
   const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
-  const chores = (choresData as Chore[] | null) ?? [];
+  const allChores = (choresData as Chore[] | null) ?? [];
+  const chores = allChores.filter((c) => assignedIds.has(c.id));
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
   const earnedMap = new Map(userBadges.map((ub) => [ub.badge_id, ub]));
   const earnedCount = userBadges.length;

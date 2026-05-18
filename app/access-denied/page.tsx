@@ -14,11 +14,9 @@ export default async function AccessDeniedPage() {
           Access Denied
         </h1>
         <p className="font-sans text-fg-muted text-sm leading-relaxed">
-          This Google account isn&apos;t on Ridham&apos;s ChoreQuest team.
+          This Google account couldn&apos;t be authorized.
           <br />
-          Ask{" "}
-          <span className="text-accent-teal">r.shishir812@gmail.com</span> to
-          add you.
+          Try signing in again, or ask your family&apos;s parent to invite this email.
         </p>
         <Link
           href="/login"

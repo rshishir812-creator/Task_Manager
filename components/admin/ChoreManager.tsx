@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { Chore, DayOfWeek } from "@/lib/types";
+import type { Chore, DayOfWeek, Profile, ChoreAssignment } from "@/lib/types";
 import ChoreForm from "./ChoreForm";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -12,15 +12,25 @@ const ALL_DAYS: DayOfWeek[] = ["mon","tue","wed","thu","fri","sat","sun"];
 
 interface ChoreManagerProps {
   initialChores: Chore[];
+  kids: Profile[];
+  initialAssignments: ChoreAssignment[];
 }
 
-export default function ChoreManager({ initialChores }: ChoreManagerProps) {
+export default function ChoreManager({ initialChores, kids, initialAssignments }: ChoreManagerProps) {
   const router = useRouter();
   const [chores, setChores] = useState(initialChores);
+  const [assignments, setAssignments] = useState(initialAssignments);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Chore | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Build a quick chore_id -> assigned user_ids map
+  const assignmentsByChore = new Map<string, string[]>();
+  for (const a of assignments) {
+    if (!assignmentsByChore.has(a.chore_id)) assignmentsByChore.set(a.chore_id, []);
+    assignmentsByChore.get(a.chore_id)!.push(a.user_id);
+  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -28,7 +38,7 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
   }
 
   const handleCreate = useCallback(
-    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id">) => {
+    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id"> & { assignedTo: string[] }) => {
       const res = await fetch("/api/admin/chores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,6 +47,7 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
       if (!res.ok) { showToast("❌ Failed to create chore"); return; }
       const { chore } = await res.json() as { chore: Chore };
       setChores((prev) => [...prev, chore]);
+      setAssignments((prev) => [...prev, ...data.assignedTo.map((user_id) => ({ chore_id: chore.id, user_id }))]);
       setShowForm(false);
       showToast("✅ Chore created!");
       router.refresh();
@@ -45,7 +56,7 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
   );
 
   const handleUpdate = useCallback(
-    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id">) => {
+    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id"> & { assignedTo: string[] }) => {
       if (!editing) return;
       const res = await fetch(`/api/admin/chores/${editing.id}`, {
         method: "PATCH",
@@ -55,6 +66,10 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
       if (!res.ok) { showToast("❌ Failed to update chore"); return; }
       const { chore } = await res.json() as { chore: Chore };
       setChores((prev) => prev.map((c) => (c.id === chore.id ? chore : c)));
+      setAssignments((prev) => [
+        ...prev.filter((a) => a.chore_id !== chore.id),
+        ...data.assignedTo.map((user_id) => ({ chore_id: chore.id, user_id })),
+      ]);
       setEditing(null);
       showToast("✅ Chore updated!");
       router.refresh();
@@ -145,6 +160,7 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
         <div className="rounded-2xl border border-accent-amber/50 bg-bg-elevated p-5">
           <h3 className="font-display font-bold text-fg mb-4">New Chore</h3>
           <ChoreForm
+            kids={kids}
             onSave={handleCreate}
             onCancel={() => setShowForm(false)}
           />
@@ -157,6 +173,8 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
           <h3 className="font-display font-bold text-fg mb-4">Edit: {editing.title}</h3>
           <ChoreForm
             initial={editing}
+            kids={kids}
+            initialAssignedTo={assignmentsByChore.get(editing.id) ?? []}
             onSave={handleUpdate}
             onCancel={() => setEditing(null)}
           />
@@ -212,6 +230,22 @@ export default function ChoreManager({ initialChores }: ChoreManagerProps) {
                   </span>
                 ))}
               </div>
+              {/* Assigned children */}
+              {kids.length > 0 && (() => {
+                const assignedIds = assignmentsByChore.get(chore.id) ?? [];
+                const assignedKids = kids.filter((k) => assignedIds.includes(k.id));
+                if (assignedKids.length === 0) {
+                  return <p className="text-[10px] text-red-400 mt-1">⚠️ Not assigned to anyone</p>;
+                }
+                if (assignedKids.length === kids.length) {
+                  return <p className="text-[10px] text-fg-muted mt-1">For: everyone</p>;
+                }
+                return (
+                  <p className="text-[10px] text-fg-muted mt-1">
+                    For: {assignedKids.map((k) => k.name?.split(" ")[0] ?? k.email).join(", ")}
+                  </p>
+                );
+              })()}
             </div>
 
             <span className="text-xs font-semibold text-accent-amber flex-shrink-0">

@@ -99,6 +99,31 @@ export async function resolveChild(
 }
 
 /**
+ * Returns the set of chore ids assigned to a specific user. A child sees a
+ * chore on their dashboard iff its id is in this set.
+ */
+export async function getAssignedChoreIds(userId: string): Promise<Set<string>> {
+  const { data } = await createAdminClient()
+    .from("chore_assignments")
+    .select("chore_id")
+    .eq("user_id", userId);
+  return new Set(((data as { chore_id: string }[] | null) ?? []).map((r) => r.chore_id));
+}
+
+/**
+ * Checks whether a chore is assigned to a specific user.
+ */
+export async function isChoreAssigned(choreId: string, userId: string): Promise<boolean> {
+  const { data } = await createAdminClient()
+    .from("chore_assignments")
+    .select("chore_id")
+    .eq("chore_id", choreId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data;
+}
+
+/**
  * Checks whether a target user_id is a child of the given family. Used by API
  * routes to authorize per-child writes (badge award, points override, etc.).
  */
