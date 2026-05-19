@@ -32,6 +32,8 @@ export interface ChildInvitation {
 export interface ChoreAssignment {
   chore_id: string;
   user_id: string;
+  created_at: string;
+  removed_at: string | null;
 }
 
 export interface Chore {
@@ -42,6 +44,7 @@ export interface Chore {
   points: number;
   recurrence: DayOfWeek[];
   is_active: boolean;
+  deactivated_at: string | null;
   family_id: string;
   created_by: string | null;
   created_at: string;

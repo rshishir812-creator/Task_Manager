@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getChoresForDay, getDayOfWeek, getTodayIST, getYesterdayIST, computeOverallStreak } from "@/lib/streak-calculator";
 import { computeMilestones } from "@/lib/milestone-calculator";
-import { getAssignedChoreIds } from "@/lib/auth-scope";
+import { getAssignmentsForUser } from "@/lib/auth-scope";
 import DashboardClient from "@/components/chores/DashboardClient";
 import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile, Badge, UserBadge } from "@/lib/types";
 
@@ -27,7 +27,7 @@ export default async function UserDashboard() {
     { data: bonusesData },
     { data: badgesData },
     { data: userBadgesData },
-    assignedIds,
+    assignments,
   ] = await Promise.all([
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", user.id),
@@ -35,10 +35,14 @@ export default async function UserDashboard() {
     adminClient.from("daily_bonuses").select("*").eq("user_id", user.id),
     adminClient.from("badges").select("*").eq("family_id", profile.family_id),
     adminClient.from("user_badges").select("*").eq("user_id", user.id),
-    getAssignedChoreIds(user.id),
+    getAssignmentsForUser(user.id),
   ]);
 
   const allChores = (choresData as Chore[] | null) ?? [];
+  // Currently-active assignment ids (removed_at === null)
+  const assignedIds = new Set(
+    assignments.filter((a) => a.removed_at === null).map((a) => a.chore_id),
+  );
   const chores = allChores.filter((c) => assignedIds.has(c.id));
   const allCompletions = (completionsData as ChoreCompletion[] | null) ?? [];
   const streaks = (streaksData as Streak[] | null) ?? [];
@@ -61,7 +65,7 @@ export default async function UserDashboard() {
     allCompletions.reduce((sum, c) => sum + (c.points_earned ?? 0), 0) +
     bonuses.reduce((sum, b) => sum + b.points_bonus, 0);
 
-  const overallStreak = computeOverallStreak(chores, allCompletions, today);
+  const overallStreak = computeOverallStreak(chores, allCompletions, today, assignments);
 
   const milestones = computeMilestones({
     badges,
@@ -69,6 +73,7 @@ export default async function UserDashboard() {
     chores,
     completions: allCompletions,
     today,
+    assignments,
   }).slice(0, 3);
 
   return (

@@ -21,7 +21,7 @@ interface ChoreFormProps {
   kids?: Profile[];
   /** Children currently assigned to this chore (only relevant for edits). */
   initialAssignedTo?: string[];
-  onSave: (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id"> & { assignedTo: string[] }) => Promise<void>;
+  onSave: (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id" | "deactivated_at"> & { assignedTo: string[] }) => Promise<void>;
   onCancel: () => void;
 }
 

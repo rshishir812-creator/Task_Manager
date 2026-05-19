@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Chore, ChoreCompletion } from "@/lib/types";
-import { getDayOfWeek, getChoresForDay } from "@/lib/streak-calculator";
+import type { Chore, ChoreAssignment, ChoreCompletion } from "@/lib/types";
+import { getDayOfWeek } from "@/lib/streak-calculator";
 
 interface DayData {
   date: string;
@@ -10,22 +10,65 @@ interface DayData {
   completedCount: number;
   totalCount: number;
   completions: ChoreCompletion[];
+  scheduled: Chore[];
 }
 
 interface HeatmapCalendarProps {
   chores: Chore[];
   completions: ChoreCompletion[];
+  assignments?: ChoreAssignment[];
   today: string;
 }
 
-function buildMonth(year: number, month: number, chores: Chore[], completions: ChoreCompletion[], today: string): DayData[] {
+function dateOnly(iso: string | null | undefined): string | null {
+  return iso ? iso.slice(0, 10) : null;
+}
+
+/**
+ * Returns the chores that should have applied to the user on a specific date,
+ * honouring chore lifecycle (created_at / deactivated_at) and assignment
+ * lifecycle (created_at / removed_at).
+ */
+function scheduledOnDate(
+  chores: Chore[],
+  assignmentByChoreId: Map<string, ChoreAssignment> | null,
+  dateStr: string,
+): Chore[] {
+  const dow = getDayOfWeek(dateStr);
+  return chores.filter((c) => {
+    if (!c.recurrence.includes(dow)) return false;
+    // Lifecycle: chore must have existed and not been retired by this date
+    const created = dateOnly(c.created_at);
+    if (created && created > dateStr) return false;
+    const deact = dateOnly(c.deactivated_at);
+    if (deact && deact <= dateStr) return false;
+    // Assignment lifecycle (if assignments provided)
+    if (assignmentByChoreId !== null) {
+      const a = assignmentByChoreId.get(c.id);
+      if (!a) return false;
+      const aCreated = dateOnly(a.created_at);
+      if (aCreated && aCreated > dateStr) return false;
+      const aRemoved = dateOnly(a.removed_at);
+      if (aRemoved && aRemoved <= dateStr) return false;
+    }
+    return true;
+  });
+}
+
+function buildMonth(
+  year: number,
+  month: number,
+  chores: Chore[],
+  completions: ChoreCompletion[],
+  assignmentByChoreId: Map<string, ChoreAssignment> | null,
+  today: string,
+): DayData[] {
   const days: DayData[] = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const dow = getDayOfWeek(dateStr);
-    const scheduled = getChoresForDay(chores, dow);
+    const scheduled = scheduledOnDate(chores, assignmentByChoreId, dateStr);
     const dayCompletions = completions.filter((c) => c.completed_date === dateStr);
     const completedIds = new Set(dayCompletions.map((c) => c.chore_id));
     const completedCount = scheduled.filter((c) => completedIds.has(c.id)).length;
@@ -38,7 +81,7 @@ function buildMonth(year: number, month: number, chores: Chore[], completions: C
     else if (completedCount > 0) status = "partial";
     else status = "missed";
 
-    days.push({ date: dateStr, status, completedCount, totalCount, completions: dayCompletions });
+    days.push({ date: dateStr, status, completedCount, totalCount, completions: dayCompletions, scheduled });
   }
   return days;
 }
@@ -51,13 +94,17 @@ const STATUS_CLASS: Record<DayData["status"], string> = {
   "no-chores": "bg-[var(--border)]/40 text-fg-muted",
 };
 
-export default function HeatmapCalendar({ chores, completions, today }: HeatmapCalendarProps) {
+export default function HeatmapCalendar({ chores, completions, assignments, today }: HeatmapCalendarProps) {
   const todayDate = new Date(today + "T00:00:00");
   const [viewYear, setViewYear] = useState(todayDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(todayDate.getMonth());
   const [selected, setSelected] = useState<DayData | null>(null);
 
-  const days = buildMonth(viewYear, viewMonth, chores, completions, today);
+  const assignmentByChoreId = assignments
+    ? new Map(assignments.map((a) => [a.chore_id, a]))
+    : null;
+
+  const days = buildMonth(viewYear, viewMonth, chores, completions, assignmentByChoreId, today);
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("en-IN", {
     month: "long",
@@ -132,7 +179,7 @@ export default function HeatmapCalendar({ chores, completions, today }: HeatmapC
             <p className="text-sm text-fg-muted">No chores scheduled.</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {getChoresForDay(chores, getDayOfWeek(selected.date)).map((chore) => {
+              {selected.scheduled.map((chore) => {
                 const comp = selected.completions.find((c) => c.chore_id === chore.id);
                 return (
                   <div key={chore.id} className="flex items-center gap-3">

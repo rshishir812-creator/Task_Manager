@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import BadgeTile from "@/components/gamification/BadgeTile";
 import { computeMilestones } from "@/lib/milestone-calculator";
 import { getTodayIST } from "@/lib/streak-calculator";
-import { getAssignedChoreIds } from "@/lib/auth-scope";
+import { getAssignmentsForUser } from "@/lib/auth-scope";
 import type { Badge, Chore, ChoreCompletion, UserBadge, Profile } from "@/lib/types";
 
 export default async function BadgesPage() {
@@ -24,18 +24,21 @@ export default async function BadgesPage() {
     { data: userBadgesData },
     { data: choresData },
     { data: completionsData },
-    assignedIds,
+    assignments,
   ] = await Promise.all([
     adminClient.from("badges").select("*").eq("family_id", profile.family_id).order("badge_type").order("threshold"),
     adminClient.from("user_badges").select("*").eq("user_id", user.id),
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id),
     adminClient.from("chore_completions").select("*").eq("user_id", user.id),
-    getAssignedChoreIds(user.id),
+    getAssignmentsForUser(user.id),
   ]);
 
   const badges = (badgesData as Badge[] | null) ?? [];
   const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
   const allChores = (choresData as Chore[] | null) ?? [];
+  const assignedIds = new Set(
+    assignments.filter((a) => a.removed_at === null).map((a) => a.chore_id),
+  );
   const chores = allChores.filter((c) => assignedIds.has(c.id));
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
   const earnedMap = new Map(userBadges.map((ub) => [ub.badge_id, ub]));
@@ -48,6 +51,7 @@ export default async function BadgesPage() {
       chores,
       completions,
       today: getTodayIST(),
+      assignments,
     }).map((m) => [m.badge.id, m.progressFraction])
   );
 

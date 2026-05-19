@@ -1,4 +1,4 @@
-import type { Chore, ChoreCompletion, DayOfWeek } from "./types";
+import type { Chore, ChoreAssignment, ChoreCompletion, DayOfWeek } from "./types";
 
 const DAY_INDEX: Record<number, DayOfWeek> = {
   0: "sun",
@@ -46,15 +46,50 @@ export function getChoresForDay(chores: Chore[], dayOfWeek: DayOfWeek): Chore[] 
   );
 }
 
+// ============================================================
+// Temporal helpers — a chore only counts toward a date's streak if it
+// was alive AND assigned to the user on that date.
+// ============================================================
+
+function dateOnly(iso: string | null | undefined): string | null {
+  return iso ? iso.slice(0, 10) : null;
+}
+
+/** Was the chore in existence (and not yet deactivated) by `dateStr`? */
+function isChoreAliveOn(chore: Chore, dateStr: string): boolean {
+  const created = dateOnly(chore.created_at);
+  if (created && created > dateStr) return false; // didn't exist yet
+  const deact = dateOnly(chore.deactivated_at);
+  if (deact && deact <= dateStr) return false;     // already retired
+  return true;
+}
+
+/** Was the assignment row active by `dateStr`? */
+function isAssignedOn(assignment: ChoreAssignment | undefined, dateStr: string): boolean {
+  if (!assignment) return false;
+  const created = dateOnly(assignment.created_at);
+  if (created && created > dateStr) return false;
+  const removed = dateOnly(assignment.removed_at);
+  if (removed && removed <= dateStr) return false;
+  return true;
+}
+
 /**
  * Computes the current streak for a single chore given its completions.
  * Walks backwards from today. Non-scheduled days are skipped (neutral).
  * Returns 0 if the most recent scheduled day was missed.
+ *
+ * @param assignment - Optional. The assignment row for this chore × user.
+ *                     When provided, days before the assignment existed (or
+ *                     after it was removed) are skipped from the walk.
+ *                     When omitted, the chore is treated as always assigned
+ *                     (legacy callers + the per-chore admin view).
  */
 export function computeChoreStreak(
   chore: Chore,
   completions: ChoreCompletion[],
-  todayStr: string
+  todayStr: string,
+  assignment?: ChoreAssignment
 ): number {
   const completedDates = new Set(
     completions
@@ -69,7 +104,13 @@ export function computeChoreStreak(
     const dateStr = cursor.toISOString().slice(0, 10);
     const day = getDayOfWeek(dateStr);
 
-    if (chore.recurrence.includes(day)) {
+    const recurrenceMatches = chore.recurrence.includes(day);
+    const aliveAndAssigned =
+      isChoreAliveOn(chore, dateStr) &&
+      (assignment === undefined ? true : isAssignedOn(assignment, dateStr));
+    const applies = recurrenceMatches && aliveAndAssigned;
+
+    if (applies) {
       if (completedDates.has(dateStr)) {
         streak++;
       } else if (dateStr === todayStr && streak === 0) {
@@ -88,16 +129,27 @@ export function computeChoreStreak(
 /**
  * Computes the overall daily streak: consecutive days where ALL scheduled
  * chores were completed or excepted.
+ *
+ * @param assignments - Optional. All assignment rows for the user being
+ *                      evaluated. When provided, the per-date "applicable
+ *                      chores" set excludes chores that didn't yet exist or
+ *                      weren't yet assigned to this user on that date.
  */
 export function computeOverallStreak(
   chores: Chore[],
   completions: ChoreCompletion[],
-  todayStr: string
+  todayStr: string,
+  assignments?: ChoreAssignment[]
 ): number {
   const byDate = new Map<string, Set<string>>();
   for (const c of completions) {
     if (!byDate.has(c.completed_date)) byDate.set(c.completed_date, new Set());
     byDate.get(c.completed_date)!.add(c.chore_id);
+  }
+
+  const assignmentByChoreId = new Map<string, ChoreAssignment>();
+  if (assignments) {
+    for (const a of assignments) assignmentByChoreId.set(a.chore_id, a);
   }
 
   let streak = 0;
@@ -106,9 +158,17 @@ export function computeOverallStreak(
   for (let i = 0; i < 400; i++) {
     const dateStr = cursor.toISOString().slice(0, 10);
     const day = getDayOfWeek(dateStr);
-    const scheduled = chores.filter(
-      (c) => c.is_active && c.recurrence.includes(day)
-    );
+
+    const scheduled = chores.filter((c) => {
+      if (!c.recurrence.includes(day)) return false;
+      if (!isChoreAliveOn(c, dateStr)) return false;
+      if (assignments !== undefined) {
+        if (!isAssignedOn(assignmentByChoreId.get(c.id), dateStr)) return false;
+      }
+      // Also respect is_active for "currently active" rendering (deactivated_at
+      // already handles the historical case)
+      return c.is_active || isChoreAliveOn(c, dateStr);
+    });
 
     if (scheduled.length === 0) {
       cursor.setDate(cursor.getDate() - 1);

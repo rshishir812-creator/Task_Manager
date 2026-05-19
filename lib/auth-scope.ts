@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Profile } from "@/lib/types";
+import type { ChoreAssignment, Profile } from "@/lib/types";
 
 export interface ParentContext {
   user: { id: string; email?: string };
@@ -99,14 +99,28 @@ export async function resolveChild(
 }
 
 /**
- * Returns the set of chore ids assigned to a specific user. A child sees a
- * chore on their dashboard iff its id is in this set.
+ * Returns full assignment rows for a user. Used by the streak calculators
+ * so they can tell when each assignment took effect / was removed.
+ */
+export async function getAssignmentsForUser(userId: string): Promise<ChoreAssignment[]> {
+  const { data } = await createAdminClient()
+    .from("chore_assignments")
+    .select("*")
+    .eq("user_id", userId);
+  return (data as ChoreAssignment[] | null) ?? [];
+}
+
+/**
+ * Returns the set of chore ids currently assigned to a specific user
+ * (filters out soft-removed ones). A child sees a chore on their dashboard
+ * iff its id is in this set.
  */
 export async function getAssignedChoreIds(userId: string): Promise<Set<string>> {
   const { data } = await createAdminClient()
     .from("chore_assignments")
-    .select("chore_id")
-    .eq("user_id", userId);
+    .select("chore_id, removed_at")
+    .eq("user_id", userId)
+    .is("removed_at", null);
   return new Set(((data as { chore_id: string }[] | null) ?? []).map((r) => r.chore_id));
 }
 

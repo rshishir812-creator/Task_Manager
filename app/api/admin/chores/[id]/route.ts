@@ -73,18 +73,69 @@ export async function PATCH(
     }
   }
 
-  // Handle assignedTo update if provided
+  // Handle assignedTo update if provided — temporal-safe merge:
+  //   - newly added user → insert (or revive a soft-removed row)
+  //   - newly removed user → hard-delete if no completions exist; soft-delete
+  //     (set removed_at) if there's history to preserve
   if (Array.isArray(assignedTo)) {
     const allChildren = await getChildrenOfFamily(ctx.familyId);
     const familyChildIds = new Set(allChildren.map((c) => c.id));
-    const targetIds = assignedTo.filter((id) => familyChildIds.has(id));
+    const target = new Set(assignedTo.filter((id) => familyChildIds.has(id)));
 
-    // Replace assignments: delete existing, insert new
-    await adminClient.from("chore_assignments").delete().eq("chore_id", params.id);
-    if (targetIds.length > 0) {
-      await adminClient
-        .from("chore_assignments")
-        .insert(targetIds.map((user_id) => ({ chore_id: params.id, user_id })));
+    const { data: existingRows } = await adminClient
+      .from("chore_assignments")
+      .select("user_id, removed_at")
+      .eq("chore_id", params.id);
+    const existing = new Map<string, { removed_at: string | null }>(
+      ((existingRows as { user_id: string; removed_at: string | null }[] | null) ?? [])
+        .map((r) => [r.user_id, { removed_at: r.removed_at }]),
+    );
+
+    const now = new Date().toISOString();
+
+    // 1. Users in the new target list — insert or revive
+    for (const userId of Array.from(target)) {
+      const row = existing.get(userId);
+      if (!row) {
+        await adminClient.from("chore_assignments").insert({
+          chore_id: params.id,
+          user_id: userId,
+          created_at: now,
+          removed_at: null,
+        });
+      } else if (row.removed_at !== null) {
+        await adminClient
+          .from("chore_assignments")
+          .update({ removed_at: null, created_at: now })
+          .eq("chore_id", params.id)
+          .eq("user_id", userId);
+      }
+    }
+
+    // 2. Users no longer in the target list — soft-delete if history exists, else hard-delete
+    for (const [userId, row] of Array.from(existing.entries())) {
+      if (target.has(userId)) continue;
+      if (row.removed_at !== null) continue; // already removed
+
+      const { count } = await adminClient
+        .from("chore_completions")
+        .select("id", { count: "exact", head: true })
+        .eq("chore_id", params.id)
+        .eq("user_id", userId);
+
+      if ((count ?? 0) > 0) {
+        await adminClient
+          .from("chore_assignments")
+          .update({ removed_at: now })
+          .eq("chore_id", params.id)
+          .eq("user_id", userId);
+      } else {
+        await adminClient
+          .from("chore_assignments")
+          .delete()
+          .eq("chore_id", params.id)
+          .eq("user_id", userId);
+      }
     }
   }
 
@@ -109,9 +160,12 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Soft-delete: flip is_active = false. The chores_sync_deactivated trigger
+  // sets deactivated_at = now() so past streaks stay intact but the chore
+  // is hidden from today's lists and future streak walks.
   const { error } = await adminClient
     .from("chores")
-    .delete()
+    .update({ is_active: false })
     .eq("id", params.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

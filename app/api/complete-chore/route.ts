@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkBadges } from "@/lib/badge-checker";
 import { computeChoreStreak, computeOverallStreak, getChoresForDay, getDayOfWeek } from "@/lib/streak-calculator";
 import { DAILY_BONUS_POINTS } from "@/lib/constants";
-import type { Chore, ChoreCompletion, Badge, UserBadge, Streak } from "@/lib/types";
+import type { Chore, ChoreAssignment, ChoreCompletion, Badge, UserBadge, Streak } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -71,24 +71,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 });
   }
 
-  // Fetch all completions for streak / badge calc
-  const { data: allCompletions } = await adminClient
-    .from("chore_completions")
-    .select("*")
-    .eq("user_id", user.id) as { data: ChoreCompletion[] | null; error: unknown };
+  // Fetch all completions for streak / badge calc + assignments for temporal scoping
+  const [completionsRes, choresRes, assignmentsRes] = await Promise.all([
+    adminClient
+      .from("chore_completions")
+      .select("*")
+      .eq("user_id", user.id),
+    adminClient
+      .from("chores")
+      .select("*")
+      .eq("is_active", true)
+      .eq("family_id", familyId),
+    adminClient
+      .from("chore_assignments")
+      .select("*")
+      .eq("user_id", user.id),
+  ]);
 
-  const { data: allChores } = await adminClient
-    .from("chores")
-    .select("*")
-    .eq("is_active", true)
-    .eq("family_id", familyId) as { data: Chore[] | null; error: unknown };
+  const completions = (completionsRes.data as ChoreCompletion[] | null) ?? [];
+  const allChoresInFamily = (choresRes.data as Chore[] | null) ?? [];
+  const assignments = (assignmentsRes.data as ChoreAssignment[] | null) ?? [];
 
-  const completions = allCompletions ?? [];
-  const chores = allChores ?? [];
+  // Only chores currently assigned to this user — the streak/badge math must
+  // not consider chores that don't apply to them.
+  const assignedIds = new Set(
+    assignments.filter((a) => a.removed_at === null).map((a) => a.chore_id),
+  );
+  const chores = allChoresInFamily.filter((c) => assignedIds.has(c.id));
+  const choreAssignment = assignments.find((a) => a.chore_id === choreId);
 
-  // Recompute streaks
-  const newChoreStreak = computeChoreStreak(chore, completions, completedDate);
-  const newOverallStreak = computeOverallStreak(chores, completions, completedDate);
+  // Recompute streaks — temporal-aware
+  const newChoreStreak = computeChoreStreak(chore, completions, completedDate, choreAssignment);
+  const newOverallStreak = computeOverallStreak(chores, completions, completedDate, assignments);
 
   // Upsert per-chore streak
   await adminClient.from("streaks").upsert(
@@ -178,7 +192,8 @@ export async function POST(request: NextRequest) {
     userBadgesData ?? [],
     chores,
     completions,
-    completedDate
+    completedDate,
+    assignments,
   );
 
   if (newBadges.length > 0) {

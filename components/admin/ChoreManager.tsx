@@ -38,7 +38,7 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
   }
 
   const handleCreate = useCallback(
-    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id"> & { assignedTo: string[] }) => {
+    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id" | "deactivated_at"> & { assignedTo: string[] }) => {
       const res = await fetch("/api/admin/chores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,7 +47,16 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
       if (!res.ok) { showToast("❌ Failed to create chore"); return; }
       const { chore } = await res.json() as { chore: Chore };
       setChores((prev) => [...prev, chore]);
-      setAssignments((prev) => [...prev, ...data.assignedTo.map((user_id) => ({ chore_id: chore.id, user_id }))]);
+      const now = new Date().toISOString();
+      setAssignments((prev) => [
+        ...prev,
+        ...data.assignedTo.map((user_id) => ({
+          chore_id: chore.id,
+          user_id,
+          created_at: now,
+          removed_at: null,
+        })),
+      ]);
       setShowForm(false);
       showToast("✅ Chore created!");
       router.refresh();
@@ -56,7 +65,7 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
   );
 
   const handleUpdate = useCallback(
-    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id"> & { assignedTo: string[] }) => {
+    async (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id" | "deactivated_at"> & { assignedTo: string[] }) => {
       if (!editing) return;
       const res = await fetch(`/api/admin/chores/${editing.id}`, {
         method: "PATCH",
@@ -66,9 +75,15 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
       if (!res.ok) { showToast("❌ Failed to update chore"); return; }
       const { chore } = await res.json() as { chore: Chore };
       setChores((prev) => prev.map((c) => (c.id === chore.id ? chore : c)));
+      const now = new Date().toISOString();
       setAssignments((prev) => [
         ...prev.filter((a) => a.chore_id !== chore.id),
-        ...data.assignedTo.map((user_id) => ({ chore_id: chore.id, user_id })),
+        ...data.assignedTo.map((user_id) => ({
+          chore_id: chore.id,
+          user_id,
+          created_at: now,
+          removed_at: null,
+        })),
       ]);
       setEditing(null);
       showToast("✅ Chore updated!");
@@ -80,10 +95,11 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
   const handleDelete = useCallback(
     async (id: string) => {
       const res = await fetch(`/api/admin/chores/${id}`, { method: "DELETE" });
-      if (!res.ok) { showToast("❌ Failed to delete chore"); return; }
-      setChores((prev) => prev.filter((c) => c.id !== id));
+      if (!res.ok) { showToast("❌ Failed to archive chore"); return; }
+      // Soft-delete: mark inactive in local state but keep the row visible if needed
+      setChores((prev) => prev.map((c) => (c.id === id ? { ...c, is_active: false } : c)));
       setDeleteConfirm(null);
-      showToast("🗑️ Chore deleted");
+      showToast("📦 Chore archived (past history kept)");
       router.refresh();
     },
     [router]

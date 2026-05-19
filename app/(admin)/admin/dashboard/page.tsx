@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getTodayIST, getDayOfWeek, getChoresForDay, computeOverallStreak } from "@/lib/streak-calculator";
 import { getLevelInfo } from "@/lib/points-calculator";
-import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily, getAssignmentsForUser } from "@/lib/auth-scope";
 import UserMirror from "@/components/admin/UserMirror";
 import StreakFlame from "@/components/gamification/StreakFlame";
 import ChildPicker from "@/components/admin/ChildPicker";
@@ -51,15 +51,21 @@ export default async function AdminDashboard({
     { data: streaksData },
     { data: bonusesData },
     { data: userBadgesData },
+    assignments,
   ] = await Promise.all([
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", ctx.familyId).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", ridham.id),
     adminClient.from("streaks").select("*").eq("user_id", ridham.id),
     adminClient.from("daily_bonuses").select("*").eq("user_id", ridham.id),
     adminClient.from("user_badges").select("*").eq("user_id", ridham.id),
+    getAssignmentsForUser(ridham.id),
   ]);
 
-  const chores = (choresData as Chore[] | null) ?? [];
+  const allChores = (choresData as Chore[] | null) ?? [];
+  const assignedIds = new Set(
+    assignments.filter((a) => a.removed_at === null).map((a) => a.chore_id),
+  );
+  const chores = allChores.filter((c) => assignedIds.has(c.id));
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
   const streaks = (streaksData as Streak[] | null) ?? [];
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];
@@ -71,7 +77,7 @@ export default async function AdminDashboard({
     completions.reduce((s, c) => s + (c.points_earned ?? 0), 0) +
     bonuses.reduce((s, b) => s + b.points_bonus, 0);
 
-  const overallStreak = computeOverallStreak(chores, completions, today);
+  const overallStreak = computeOverallStreak(chores, completions, today, assignments);
   const longestStreak = streaks.find((s) => s.chore_id === null)?.longest_streak ?? 0;
   const levelInfo = getLevelInfo(totalPoints);
 
