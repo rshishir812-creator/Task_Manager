@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import { getTodayIST } from "@/lib/streak-calculator";
-import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getParentContext, resolveChild, getChildrenOfFamily, getAssignmentsForUser } from "@/lib/auth-scope";
 import ChildPicker from "@/components/admin/ChildPicker";
 import Link from "next/link";
 import type { Chore, ChoreCompletion } from "@/lib/types";
@@ -33,9 +33,11 @@ export default async function AdminCalendarPage({
 
   const ridham = child;
 
-  const [{ data: choresData }, { data: completionsData }] = await Promise.all([
-    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", ctx.familyId).order("sort_order"),
+  const [{ data: choresData }, { data: completionsData }, assignments] = await Promise.all([
+    // Include inactive chores so soft-deleted ones still render their past dots
+    adminClient.from("chores").select("*").eq("family_id", ctx.familyId).order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", ridham.id),
+    getAssignmentsForUser(ridham.id),
   ]);
 
   const chores = (choresData as Chore[] | null) ?? [];
@@ -54,6 +56,7 @@ export default async function AdminCalendarPage({
       <AdminCalendar
         chores={chores}
         completions={completions}
+        assignments={assignments}
         userId={ridham.id}
         today={today}
       />

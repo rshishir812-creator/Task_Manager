@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Chore, ChoreCompletion } from "@/lib/types";
-import { getDayOfWeek, getChoresForDay } from "@/lib/streak-calculator";
+import type { Chore, ChoreAssignment, ChoreCompletion } from "@/lib/types";
+import { getDayOfWeek } from "@/lib/streak-calculator";
 
 interface AdminCalendarProps {
   chores: Chore[];
   completions: ChoreCompletion[];
+  assignments?: ChoreAssignment[];
   userId: string;
   today: string;
 }
@@ -21,7 +22,39 @@ function buildMonthDays(year: number, month: number): string[] {
   return days;
 }
 
-export default function AdminCalendar({ chores, completions, userId, today }: AdminCalendarProps) {
+function dateOnly(iso: string | null | undefined): string | null {
+  return iso ? iso.slice(0, 10) : null;
+}
+
+/**
+ * Returns chores that should have applied to this user on a specific date,
+ * honouring chore lifecycle + assignment lifecycle.
+ */
+function scheduledOnDate(
+  chores: Chore[],
+  assignmentByChoreId: Map<string, ChoreAssignment> | null,
+  dateStr: string,
+): Chore[] {
+  const dow = getDayOfWeek(dateStr);
+  return chores.filter((c) => {
+    if (!c.recurrence.includes(dow)) return false;
+    const created = dateOnly(c.created_at);
+    if (created && created > dateStr) return false;
+    const deact = dateOnly(c.deactivated_at);
+    if (deact && deact <= dateStr) return false;
+    if (assignmentByChoreId !== null) {
+      const a = assignmentByChoreId.get(c.id);
+      if (!a) return false;
+      const aCreated = dateOnly(a.created_at);
+      if (aCreated && aCreated > dateStr) return false;
+      const aRemoved = dateOnly(a.removed_at);
+      if (aRemoved && aRemoved <= dateStr) return false;
+    }
+    return true;
+  });
+}
+
+export default function AdminCalendar({ chores, completions, assignments, userId, today }: AdminCalendarProps) {
   const router = useRouter();
   const todayDate = new Date(today + "T00:00:00");
   const [viewYear, setViewYear] = useState(todayDate.getFullYear());
@@ -30,6 +63,10 @@ export default function AdminCalendar({ chores, completions, userId, today }: Ad
   const [localCompletions, setLocalCompletions] = useState(completions);
   const [saving, setSaving] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  const assignmentByChoreId = assignments
+    ? new Map(assignments.map((a) => [a.chore_id, a]))
+    : null;
 
   function showToast(msg: string) {
     setToast(msg);
@@ -50,8 +87,7 @@ export default function AdminCalendar({ chores, completions, userId, today }: Ad
   }
 
   function getDayStatus(date: string) {
-    const dow = getDayOfWeek(date);
-    const scheduled = getChoresForDay(chores, dow);
+    const scheduled = scheduledOnDate(chores, assignmentByChoreId, date);
     if (scheduled.length === 0) return "no-chores";
     const done = localCompletions.filter(
       (c) => c.completed_date === date && !c.is_exception
@@ -118,7 +154,7 @@ export default function AdminCalendar({ chores, completions, userId, today }: Ad
   }
 
   const selectedChores = selected
-    ? getChoresForDay(chores, getDayOfWeek(selected))
+    ? scheduledOnDate(chores, assignmentByChoreId, selected)
     : [];
 
   return (
