@@ -101,6 +101,44 @@ export interface UserBadge {
   earned_at: string;
 }
 
+export interface Reward {
+  id: string;
+  family_id: string;
+  title: string;
+  description: string | null;
+  icon: string | null;
+  points_cost: number;
+  is_active: boolean;
+  deactivated_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  sort_order: number;
+}
+
+export interface RewardAssignment {
+  reward_id: string;
+  user_id: string;
+  created_at: string;
+  removed_at: string | null;
+}
+
+export type RedemptionStatus = "pending" | "approved" | "denied";
+
+export interface Redemption {
+  id: string;
+  family_id: string;
+  user_id: string;
+  reward_id: string | null;
+  reward_title: string;
+  reward_icon: string | null;
+  points_cost: number;
+  status: RedemptionStatus;
+  requested_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
+  decided_note: string | null;
+}
+
 // Supabase Database type for typed client
 export type Database = {
   public: {
@@ -115,6 +153,9 @@ export type Database = {
       badges: { Row: Badge; Insert: Omit<Badge, "id">; Update: Partial<Badge> };
       user_badges: { Row: UserBadge; Insert: Omit<UserBadge, "id" | "earned_at">; Update: Partial<UserBadge> };
       chore_assignments: { Row: ChoreAssignment; Insert: ChoreAssignment; Update: Partial<ChoreAssignment> };
+      rewards: { Row: Reward; Insert: Omit<Reward, "id" | "created_at">; Update: Partial<Reward> };
+      reward_assignments: { Row: RewardAssignment; Insert: RewardAssignment; Update: Partial<RewardAssignment> };
+      redemptions: { Row: Redemption; Insert: Omit<Redemption, "id" | "requested_at">; Update: Partial<Redemption> };
     };
     Views: Record<string, unknown>;
     Functions: Record<string, unknown>;

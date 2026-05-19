@@ -9,13 +9,21 @@ const BASE_LINKS = [
   { href: "/admin/chores", label: "Chores", icon: "⚔️" },
   { href: "/admin/badges", label: "Badges", icon: "🏅" },
   { href: "/admin/calendar", label: "Calendar", icon: "📅" },
+  { href: "/admin/rewards", label: "Rewards", icon: "🎁" },
+  { href: "/admin/redemptions", label: "Redeem", icon: "📬" },
   { href: "/admin/points", label: "Points", icon: "💰" },
   { href: "/admin/family", label: "Family", icon: "👨‍👩‍👧" },
 ];
 
 const SUPER_LINK = { href: "/admin/super", label: "Super", icon: "🛡️" };
 
-export default function AdminNav({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
+export default function AdminNav({
+  isSuperAdmin = false,
+  pendingRedemptionCount = 0,
+}: {
+  isSuperAdmin?: boolean;
+  pendingRedemptionCount?: number;
+}) {
   const pathname = usePathname();
   const { start } = useNavProgress();
   const links = isSuperAdmin ? [...BASE_LINKS, SUPER_LINK] : BASE_LINKS;
@@ -40,7 +48,12 @@ export default function AdminNav({ isSuperAdmin = false }: { isSuperAdmin?: bool
               aria-current={active ? "page" : undefined}
             >
               <span className="text-base">{link.icon}</span>
-              {link.label}
+              <span className="flex-1">{link.label}</span>
+              {link.href === "/admin/redemptions" && pendingRedemptionCount > 0 && (
+                <span className="text-[10px] bg-accent-amber text-black rounded-full px-1.5 py-0.5 font-bold leading-none">
+                  {pendingRedemptionCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -56,13 +69,18 @@ export default function AdminNav({ isSuperAdmin = false }: { isSuperAdmin?: bool
                 key={link.href}
                 href={link.href}
                 onClick={() => { if (!active) start(); }}
-                className={`flex-1 min-w-[60px] flex flex-col items-center gap-0.5 py-3 text-xs min-h-[44px] transition-colors ${
+                className={`relative flex-1 min-w-[60px] flex flex-col items-center gap-0.5 py-3 text-xs min-h-[44px] transition-colors ${
                   active ? "text-accent-amber font-semibold" : "text-fg-muted hover:text-fg"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
                 <span className="text-xl leading-none">{link.icon}</span>
                 <span>{link.label}</span>
+                {link.href === "/admin/redemptions" && pendingRedemptionCount > 0 && (
+                  <span className="absolute top-1.5 right-1/4 text-[9px] bg-accent-amber text-black rounded-full px-1 py-0.5 font-bold leading-none">
+                    {pendingRedemptionCount}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -7,6 +7,7 @@ import { useNavProgress } from "@/components/ui/NavProgress";
 const TABS = [
   { href: "/dashboard", label: "Today", icon: "🏠" },
   { href: "/dashboard/history", label: "History", icon: "📅" },
+  { href: "/dashboard/rewards", label: "Rewards", icon: "🎁" },
   { href: "/dashboard/badges", label: "Badges", icon: "🏆" },
   { href: "/dashboard/stats", label: "Stats", icon: "📊" },
 ];

@@ -30,6 +30,13 @@ export default async function AdminLayout({
   if (!profile) redirect("/login");
   if (profile.role !== "parent" && !profile.is_super_admin) redirect("/dashboard");
 
+  // Pending redemption badge count for the nav
+  const { count: pendingCount } = await createAdminClient()
+    .from("redemptions")
+    .select("id", { count: "exact", head: true })
+    .eq("family_id", profile.family_id)
+    .eq("status", "pending");
+
   return (
     <NavProgressProvider color="amber">
     <div className="min-h-screen bg-bg flex flex-col">
@@ -56,7 +63,7 @@ export default async function AdminLayout({
 
       {/* Body: sidebar + content */}
       <div className="flex flex-1">
-        <AdminNav isSuperAdmin={profile.is_super_admin} />
+        <AdminNav isSuperAdmin={profile.is_super_admin} pendingRedemptionCount={pendingCount ?? 0} />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
           {children}
         </main>
