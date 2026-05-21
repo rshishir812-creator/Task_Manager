@@ -262,6 +262,26 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
                   </p>
                 );
               })()}
+              {/* Verification chips (Phase 5a) */}
+              {(chore.requires_parent_approval || chore.requires_self_report || (chore.window_start_time && chore.window_end_time)) && (
+                <div className="flex gap-1 mt-1 flex-wrap">
+                  {chore.requires_parent_approval && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-amber/15 text-accent-amber">
+                      📩 approval
+                    </span>
+                  )}
+                  {chore.requires_self_report && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-amber/15 text-accent-amber">
+                      📝 self-report
+                    </span>
+                  )}
+                  {chore.window_start_time && chore.window_end_time && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-teal/15 text-accent-teal">
+                      🕐 {chore.window_start_time.slice(0,5)}–{chore.window_end_time.slice(0,5)}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <span className="text-xs font-semibold text-accent-amber flex-shrink-0">
