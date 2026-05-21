@@ -37,6 +37,25 @@ export default async function AdminLayout({
     .eq("family_id", profile.family_id)
     .eq("status", "pending");
 
+  // Pending verification count — chore_completions across all this family's
+  // children that need parent sign-off
+  const adminClient = createAdminClient();
+  const { data: kidIdRows } = await adminClient
+    .from("profiles")
+    .select("id")
+    .eq("family_id", profile.family_id)
+    .eq("role", "child");
+  const kidIds = ((kidIdRows as { id: string }[] | null) ?? []).map((r) => r.id);
+  let pendingVerificationCount = 0;
+  if (kidIds.length > 0) {
+    const { count } = await adminClient
+      .from("chore_completions")
+      .select("id", { count: "exact", head: true })
+      .in("user_id", kidIds)
+      .eq("status", "pending");
+    pendingVerificationCount = count ?? 0;
+  }
+
   return (
     <NavProgressProvider color="amber">
     <div className="min-h-screen bg-bg flex flex-col">
@@ -63,7 +82,11 @@ export default async function AdminLayout({
 
       {/* Body: sidebar + content */}
       <div className="flex flex-1">
-        <AdminNav isSuperAdmin={profile.is_super_admin} pendingRedemptionCount={pendingCount ?? 0} />
+        <AdminNav
+          isSuperAdmin={profile.is_super_admin}
+          pendingRedemptionCount={pendingCount ?? 0}
+          pendingVerificationCount={pendingVerificationCount}
+        />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
           {children}
         </main>

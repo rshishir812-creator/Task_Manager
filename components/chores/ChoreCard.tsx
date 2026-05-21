@@ -13,7 +13,11 @@ interface ChoreCardProps {
   streak: number;
   date: string;
   index?: number;
-  onComplete: (choreId: string, date: string) => Promise<void>;
+  onComplete: (
+    choreId: string,
+    date: string,
+    payload?: { startAt?: string; endAt?: string; notes?: string },
+  ) => Promise<void>;
   onUncomplete: (choreId: string, date: string) => Promise<void>;
   onException: (choreId: string, date: string, reason: string) => Promise<void>;
 }

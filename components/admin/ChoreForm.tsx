@@ -21,7 +21,11 @@ interface ChoreFormProps {
   kids?: Profile[];
   /** Children currently assigned to this chore (only relevant for edits). */
   initialAssignedTo?: string[];
-  onSave: (data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id" | "deactivated_at"> & { assignedTo: string[] }) => Promise<void>;
+  onSave: (
+    data: Omit<Chore, "id" | "created_at" | "created_by" | "family_id" | "deactivated_at"> & {
+      assignedTo: string[];
+    },
+  ) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -41,6 +45,19 @@ export default function ChoreForm({ initial, kids = [], initialAssignedTo, onSav
   const [saving, setSaving] = useState(false);
   const [customIcon, setCustomIcon] = useState("");
 
+  // Verification (Phase 5a)
+  const [requiresApproval, setRequiresApproval] = useState(initial?.requires_parent_approval ?? false);
+  const [requiresSelfReport, setRequiresSelfReport] = useState(initial?.requires_self_report ?? false);
+  const [useWindow, setUseWindow] = useState(
+    !!(initial?.window_start_time && initial?.window_end_time),
+  );
+  const [windowStart, setWindowStart] = useState(
+    initial?.window_start_time?.slice(0, 5) ?? "07:00",
+  );
+  const [windowEnd, setWindowEnd] = useState(
+    initial?.window_end_time?.slice(0, 5) ?? "09:00",
+  );
+
   function toggleDay(day: DayOfWeek) {
     setRecurrence((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
@@ -56,6 +73,10 @@ export default function ChoreForm({ initial, kids = [], initialAssignedTo, onSav
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    if (useWindow && windowStart >= windowEnd) {
+      alert("Window end time must be after start time.");
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
@@ -67,6 +88,10 @@ export default function ChoreForm({ initial, kids = [], initialAssignedTo, onSav
         is_active: isActive,
         sort_order: initial?.sort_order ?? 99,
         assignedTo,
+        requires_parent_approval: requiresApproval,
+        requires_self_report: requiresSelfReport,
+        window_start_time: useWindow ? `${windowStart}:00` : null,
+        window_end_time: useWindow ? `${windowEnd}:00` : null,
       });
     } finally {
       setSaving(false);
@@ -220,6 +245,85 @@ export default function ChoreForm({ initial, kids = [], initialAssignedTo, onSav
           )}
         </div>
       )}
+
+      {/* Verification (Phase 5a) */}
+      <details className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-4" open={requiresApproval || requiresSelfReport || useWindow}>
+        <summary className="cursor-pointer text-sm font-semibold text-fg flex items-center gap-2">
+          🔍 Verification
+          {(requiresApproval || requiresSelfReport || useWindow) && (
+            <span className="text-xs text-accent-amber">· on</span>
+          )}
+        </summary>
+        <p className="text-xs text-fg-muted mt-2 mb-3">
+          Optional. Honor-system is the default — only flip these on for chores where it matters.
+        </p>
+
+        {/* Parent approval */}
+        <label className="flex items-start gap-3 py-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={requiresApproval}
+            onChange={(e) => setRequiresApproval(e.target.checked)}
+            className="mt-1 h-4 w-4 accent-accent-teal"
+          />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-fg">Require parent approval</p>
+            <p className="text-xs text-fg-muted">
+              Kid submits → you approve on /admin/verifications before points are awarded.
+            </p>
+          </div>
+        </label>
+
+        {/* Self-report */}
+        <label className="flex items-start gap-3 py-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={requiresSelfReport}
+            onChange={(e) => setRequiresSelfReport(e.target.checked)}
+            className="mt-1 h-4 w-4 accent-accent-teal"
+          />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-fg">Require self-report</p>
+            <p className="text-xs text-fg-muted">
+              On submit, kid fills in start time, end time, and a short note about what they did
+              (pages read, what they practiced, etc.). Implies parent approval.
+            </p>
+          </div>
+        </label>
+
+        {/* Time window */}
+        <label className="flex items-start gap-3 py-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={useWindow}
+            onChange={(e) => setUseWindow(e.target.checked)}
+            className="mt-1 h-4 w-4 accent-accent-teal"
+          />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-fg">Time window (IST)</p>
+            <p className="text-xs text-fg-muted">
+              Can only be marked done inside this clock window each day.
+            </p>
+            {useWindow && (
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="time"
+                  value={windowStart}
+                  onChange={(e) => setWindowStart(e.target.value)}
+                  className="rounded-lg bg-bg border border-[var(--border)] px-2 py-1 text-sm text-fg"
+                />
+                <span className="text-xs text-fg-muted">to</span>
+                <input
+                  type="time"
+                  value={windowEnd}
+                  onChange={(e) => setWindowEnd(e.target.value)}
+                  className="rounded-lg bg-bg border border-[var(--border)] px-2 py-1 text-sm text-fg"
+                />
+              </div>
+            )}
+          </div>
+        </label>
+      </details>
 
       {/* Active toggle */}
       <div className="flex items-center gap-3">

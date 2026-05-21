@@ -49,7 +49,14 @@ export interface Chore {
   created_by: string | null;
   created_at: string;
   sort_order: number;
+  // Verification (Phase 5a) — all optional, all combinable
+  requires_parent_approval: boolean;
+  requires_self_report: boolean;
+  window_start_time: string | null;  // "HH:MM:SS" or null
+  window_end_time: string | null;
 }
+
+export type CompletionStatus = "verified" | "pending" | "denied";
 
 export interface ChoreCompletion {
   id: string;
@@ -60,6 +67,14 @@ export interface ChoreCompletion {
   exception_reason: string | null;
   completed_at: string | null;
   points_earned: number | null;
+  // Verification (Phase 5a)
+  status: CompletionStatus;
+  verified_by: string | null;
+  verified_at: string | null;
+  denial_reason: string | null;
+  self_report_start_at: string | null;
+  self_report_end_at: string | null;
+  notes: string | null;
 }
 
 export interface DailyBonus {

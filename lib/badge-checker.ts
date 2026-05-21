@@ -38,7 +38,7 @@ export function checkBadges(
 
     if (badge.badge_type === "milestone" && badge.chore_id !== null) {
       const count = completions.filter(
-        (c) => c.chore_id === badge.chore_id && !c.is_exception
+        (c) => c.chore_id === badge.chore_id && !c.is_exception && c.status === "verified"
       ).length;
       if (count >= badge.threshold) {
         newBadges.push(badge);

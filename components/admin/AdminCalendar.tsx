@@ -141,6 +141,13 @@ export default function AdminCalendar({ chores, completions, assignments, userId
             exception_reason: null,
             completed_at: new Date().toISOString(),
             points_earned: action === "exception" ? 0 : (chore?.points ?? 0),
+            status: "verified",
+            verified_by: null,
+            verified_at: new Date().toISOString(),
+            denial_reason: null,
+            self_report_start_at: null,
+            self_report_end_at: null,
+            notes: null,
           },
         ];
       });

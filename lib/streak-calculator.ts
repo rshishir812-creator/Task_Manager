@@ -46,6 +46,14 @@ export function getChoresForDay(chores: Chore[], dayOfWeek: DayOfWeek): Chore[] 
   );
 }
 
+/**
+ * Filters out pending and denied completions. Only verified completions
+ * count toward streaks, points, badges, and the daily bonus check.
+ */
+export function onlyVerified(completions: ChoreCompletion[]): ChoreCompletion[] {
+  return completions.filter((c) => c.status === "verified");
+}
+
 // ============================================================
 // Temporal helpers — a chore only counts toward a date's streak if it
 // was alive AND assigned to the user on that date.
@@ -92,7 +100,7 @@ export function computeChoreStreak(
   assignment?: ChoreAssignment
 ): number {
   const completedDates = new Set(
-    completions
+    onlyVerified(completions)
       .filter((c) => c.chore_id === chore.id)
       .map((c) => c.completed_date)
   );
@@ -142,7 +150,7 @@ export function computeOverallStreak(
   assignments?: ChoreAssignment[]
 ): number {
   const byDate = new Map<string, Set<string>>();
-  for (const c of completions) {
+  for (const c of onlyVerified(completions)) {
     if (!byDate.has(c.completed_date)) byDate.set(c.completed_date, new Set());
     byDate.get(c.completed_date)!.add(c.chore_id);
   }

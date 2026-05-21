@@ -133,7 +133,7 @@ export function computeMilestones(args: {
       chore = c;
       target = badge.threshold;
       current = completions.filter(
-        (cc) => cc.chore_id === badge.chore_id && !cc.is_exception
+        (cc) => cc.chore_id === badge.chore_id && !cc.is_exception && cc.status === "verified"
       ).length;
     }
 

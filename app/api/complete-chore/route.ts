@@ -2,9 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkBadges } from "@/lib/badge-checker";
-import { computeChoreStreak, computeOverallStreak, getChoresForDay, getDayOfWeek } from "@/lib/streak-calculator";
+import {
+  computeChoreStreak,
+  computeOverallStreak,
+  getChoresForDay,
+  getDayOfWeek,
+  getTodayIST,
+} from "@/lib/streak-calculator";
 import { DAILY_BONUS_POINTS } from "@/lib/constants";
-import type { Chore, ChoreAssignment, ChoreCompletion, Badge, UserBadge, Streak } from "@/lib/types";
+import type { Chore, ChoreAssignment, ChoreCompletion, Badge, UserBadge, Streak, CompletionStatus } from "@/lib/types";
+
+/** "HH:MM:SS" current IST clock string. */
+function currentIstHHMMSS(): string {
+  const now = new Date();
+  const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().slice(11, 19);
+}
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -16,12 +29,23 @@ export async function POST(request: NextRequest) {
     completedDate: string;
     isException?: boolean;
     exceptionReason?: string;
+    startAt?: string;     // ISO timestamp — kid's self-reported start
+    endAt?: string;       // ISO timestamp — kid's self-reported end
+    notes?: string;       // kid's proof text
   };
-  const { choreId, completedDate, isException = false, exceptionReason } = body;
+  const {
+    choreId,
+    completedDate,
+    isException = false,
+    exceptionReason,
+    startAt,
+    endAt,
+    notes,
+  } = body;
 
   const adminClient = createAdminClient();
 
-  // Resolve the requester's family — every chore/badge query is scoped to it
+  // Resolve the requester's family
   const { data: profileData } = await adminClient
     .from("profiles")
     .select("family_id")
@@ -30,7 +54,7 @@ export async function POST(request: NextRequest) {
   if (!profileData) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   const familyId = profileData.family_id;
 
-  // Fetch chore for points (must belong to user's family)
+  // Fetch chore (must belong to user's family)
   const { data: chore } = await adminClient
     .from("chores")
     .select("*")
@@ -40,18 +64,84 @@ export async function POST(request: NextRequest) {
 
   if (!chore) return NextResponse.json({ error: "Chore not found" }, { status: 404 });
 
-  // Verify this chore is assigned to the current user
+  // Verify this chore is currently assigned to the requester
   const { data: assignment } = await adminClient
     .from("chore_assignments")
-    .select("chore_id")
+    .select("chore_id, removed_at")
     .eq("chore_id", choreId)
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!assignment) return NextResponse.json({ error: "Not assigned" }, { status: 403 });
+  if (!assignment || (assignment as { removed_at: string | null }).removed_at !== null) {
+    return NextResponse.json({ error: "Not assigned" }, { status: 403 });
+  }
 
+  // ============================================================
+  // Verification gates (Phase 5a)
+  // ============================================================
+
+  // 1. Time window — only enforced for today's submission (admin calendar edits bypass)
+  const today = getTodayIST();
+  if (
+    chore.window_start_time &&
+    chore.window_end_time &&
+    completedDate === today
+  ) {
+    const nowHHMMSS = currentIstHHMMSS();
+    if (nowHHMMSS < chore.window_start_time || nowHHMMSS > chore.window_end_time) {
+      return NextResponse.json(
+        {
+          error: `This chore can only be done between ${chore.window_start_time.slice(0, 5)} and ${chore.window_end_time.slice(0, 5)} IST.`,
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  // 2. Self-report check — start, end, notes required when chore demands them
+  let selfReportStart: string | null = null;
+  let selfReportEnd: string | null = null;
+  let cleanedNotes: string | null = null;
+
+  if (chore.requires_self_report && !isException) {
+    if (!startAt || !endAt) {
+      return NextResponse.json(
+        { error: "Please fill in when you started and ended." },
+        { status: 400 },
+      );
+    }
+    const s = new Date(startAt);
+    const e = new Date(endAt);
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) {
+      return NextResponse.json({ error: "Invalid start/end time" }, { status: 400 });
+    }
+    if (e <= s) {
+      return NextResponse.json(
+        { error: "End time must be after start time." },
+        { status: 400 },
+      );
+    }
+    const trimmed = (notes ?? "").trim();
+    if (trimmed.length < 5) {
+      return NextResponse.json(
+        { error: "Add a short note about what you did (5+ chars)." },
+        { status: 400 },
+      );
+    }
+    selfReportStart = s.toISOString();
+    selfReportEnd = e.toISOString();
+    cleanedNotes = trimmed;
+  } else if (notes && notes.trim().length > 0) {
+    // Notes are allowed even when not required
+    cleanedNotes = notes.trim();
+  }
+
+  // 3. Final status
+  const requiresApproval = chore.requires_parent_approval || chore.requires_self_report;
+  const status: CompletionStatus = requiresApproval ? "pending" : "verified";
   const pointsEarned = isException ? 0 : chore.points;
 
-  // Upsert completion (idempotent)
+  // Upsert completion
+  const nowIso = new Date().toISOString();
   const { error: insertErr } = await adminClient
     .from("chore_completions")
     .upsert(
@@ -61,63 +151,57 @@ export async function POST(request: NextRequest) {
         completed_date: completedDate,
         is_exception: isException,
         exception_reason: exceptionReason ?? null,
-        completed_at: new Date().toISOString(),
+        completed_at: nowIso,
         points_earned: pointsEarned,
+        status,
+        verified_by: status === "verified" ? user.id : null,
+        verified_at: status === "verified" ? nowIso : null,
+        denial_reason: null,
+        self_report_start_at: selfReportStart,
+        self_report_end_at: selfReportEnd,
+        notes: cleanedNotes,
       },
-      { onConflict: "chore_id,user_id,completed_date" }
+      { onConflict: "chore_id,user_id,completed_date" },
     );
 
   if (insertErr) {
     return NextResponse.json({ error: insertErr.message }, { status: 500 });
   }
 
-  // Fetch all completions for streak / badge calc + assignments for temporal scoping
+  // ============================================================
+  // Recompute streaks/badges/bonus (only verified completions count)
+  // ============================================================
   const [completionsRes, choresRes, assignmentsRes] = await Promise.all([
-    adminClient
-      .from("chore_completions")
-      .select("*")
-      .eq("user_id", user.id),
-    adminClient
-      .from("chores")
-      .select("*")
-      .eq("is_active", true)
-      .eq("family_id", familyId),
-    adminClient
-      .from("chore_assignments")
-      .select("*")
-      .eq("user_id", user.id),
+    adminClient.from("chore_completions").select("*").eq("user_id", user.id),
+    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", familyId),
+    adminClient.from("chore_assignments").select("*").eq("user_id", user.id),
   ]);
 
   const completions = (completionsRes.data as ChoreCompletion[] | null) ?? [];
   const allChoresInFamily = (choresRes.data as Chore[] | null) ?? [];
   const assignments = (assignmentsRes.data as ChoreAssignment[] | null) ?? [];
 
-  // Only chores currently assigned to this user — the streak/badge math must
-  // not consider chores that don't apply to them.
   const assignedIds = new Set(
     assignments.filter((a) => a.removed_at === null).map((a) => a.chore_id),
   );
   const chores = allChoresInFamily.filter((c) => assignedIds.has(c.id));
   const choreAssignment = assignments.find((a) => a.chore_id === choreId);
 
-  // Recompute streaks — temporal-aware
   const newChoreStreak = computeChoreStreak(chore, completions, completedDate, choreAssignment);
   const newOverallStreak = computeOverallStreak(chores, completions, completedDate, assignments);
 
-  // Upsert per-chore streak
   await adminClient.from("streaks").upsert(
     {
       user_id: user.id,
       chore_id: choreId,
       current_streak: newChoreStreak,
-      longest_streak: newChoreStreak, // will be updated below
+      longest_streak: newChoreStreak,
       last_completed: completedDate,
-      updated_at: new Date().toISOString(),
+      updated_at: nowIso,
     },
-    { onConflict: "user_id,chore_id" }
+    { onConflict: "user_id,chore_id" },
   );
 
-  // Ensure longest_streak is never decreased
   await adminClient
     .from("streaks")
     .update({ longest_streak: newChoreStreak })
@@ -125,7 +209,6 @@ export async function POST(request: NextRequest) {
     .eq("chore_id", choreId)
     .lt("longest_streak", newChoreStreak);
 
-  // Upsert overall streak (chore_id IS NULL)
   const { data: existingOverall } = await adminClient
     .from("streaks")
     .select("*")
@@ -141,20 +224,20 @@ export async function POST(request: NextRequest) {
       current_streak: newOverallStreak,
       longest_streak: Math.max(newOverallStreak, existingOverall?.longest_streak ?? 0),
       last_completed: completedDate,
-      updated_at: new Date().toISOString(),
+      updated_at: nowIso,
     },
-    { onConflict: "user_id,chore_id" }
+    { onConflict: "user_id,chore_id" },
   );
 
-  // Check if all chores for the day are done → daily bonus
+  // Daily bonus only if ALL scheduled chores today are VERIFIED
   const dayOfWeek = getDayOfWeek(completedDate);
   const todaysChores = getChoresForDay(chores, dayOfWeek);
-  const completedToday = new Set(
+  const verifiedToday = new Set(
     completions
-      .filter((c) => c.completed_date === completedDate)
-      .map((c) => c.chore_id)
+      .filter((c) => c.completed_date === completedDate && c.status === "verified")
+      .map((c) => c.chore_id),
   );
-  const allComplete = todaysChores.every((c) => completedToday.has(c.id));
+  const allComplete = todaysChores.every((c) => verifiedToday.has(c.id));
 
   let dailyBonusAwarded = false;
   if (allComplete) {
@@ -170,13 +253,13 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         bonus_date: completedDate,
         points_bonus: DAILY_BONUS_POINTS,
-        awarded_at: new Date().toISOString(),
+        awarded_at: nowIso,
       });
       dailyBonusAwarded = true;
     }
   }
 
-  // Check badges (scoped to this family)
+  // Badges
   const { data: allBadges } = await adminClient
     .from("badges")
     .select("*")
@@ -202,16 +285,17 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         badge_id: b.id,
         earned_at: new Date().toISOString(),
-      }))
+      })),
     );
   }
 
   return NextResponse.json({
-    pointsEarned,
+    pointsEarned: status === "verified" ? pointsEarned : 0,
     newChoreStreak,
     newOverallStreak,
-    badgesAwarded: newBadges,
+    badgesAwarded: status === "verified" ? newBadges : [],
     dailyBonusAwarded,
     allComplete,
+    status,
   });
 }

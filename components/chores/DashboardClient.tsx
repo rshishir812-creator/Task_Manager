@@ -77,8 +77,13 @@ export default function DashboardClient({
   }
 
   const handleComplete = useCallback(
-    async (choreId: string, date: string) => {
+    async (
+      choreId: string,
+      date: string,
+      payload?: { startAt?: string; endAt?: string; notes?: string },
+    ) => {
       const chore = allChores.find((c) => c.id === choreId);
+      const willBePending = !!(chore?.requires_parent_approval || chore?.requires_self_report);
       const tempCompletion: ChoreCompletion = {
         id: `temp-${choreId}-${date}`,
         chore_id: choreId,
@@ -88,6 +93,13 @@ export default function DashboardClient({
         exception_reason: null,
         completed_at: new Date().toISOString(),
         points_earned: chore?.points ?? 0,
+        status: willBePending ? "pending" : "verified",
+        verified_by: willBePending ? null : profile.id,
+        verified_at: willBePending ? null : new Date().toISOString(),
+        denial_reason: null,
+        self_report_start_at: payload?.startAt ?? null,
+        self_report_end_at: payload?.endAt ?? null,
+        notes: payload?.notes ?? null,
       };
       setCompletions((prev) => [...prev, tempCompletion]);
 
@@ -95,7 +107,7 @@ export default function DashboardClient({
         const res = await fetch("/api/complete-chore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ choreId, completedDate: date }),
+          body: JSON.stringify({ choreId, completedDate: date, ...(payload ?? {}) }),
         });
         if (!res.ok) throw new Error("Failed");
         const data = await res.json() as {
@@ -170,6 +182,13 @@ export default function DashboardClient({
         exception_reason: reason,
         completed_at: new Date().toISOString(),
         points_earned: 0,
+        status: "verified",
+        verified_by: profile.id,
+        verified_at: new Date().toISOString(),
+        denial_reason: null,
+        self_report_start_at: null,
+        self_report_end_at: null,
+        notes: null,
       };
       setCompletions((prev) => [...prev, tempEx]);
       try {

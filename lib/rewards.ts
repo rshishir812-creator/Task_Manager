@@ -15,7 +15,8 @@ export interface PointsBalance {
 export async function getPointsBalance(userId: string): Promise<PointsBalance> {
   const admin = createAdminClient();
   const [completionsRes, bonusesRes, redemptionsRes] = await Promise.all([
-    admin.from("chore_completions").select("points_earned").eq("user_id", userId),
+    // Only verified completions count toward earned XP
+    admin.from("chore_completions").select("points_earned").eq("user_id", userId).eq("status", "verified"),
     admin.from("daily_bonuses").select("points_bonus").eq("user_id", userId),
     admin.from("redemptions").select("points_cost").eq("user_id", userId).eq("status", "approved"),
   ]);

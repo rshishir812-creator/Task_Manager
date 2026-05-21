@@ -9,6 +9,7 @@ const BASE_LINKS = [
   { href: "/admin/chores", label: "Chores", icon: "⚔️" },
   { href: "/admin/badges", label: "Badges", icon: "🏅" },
   { href: "/admin/calendar", label: "Calendar", icon: "📅" },
+  { href: "/admin/verifications", label: "Verify", icon: "🔍" },
   { href: "/admin/rewards", label: "Rewards", icon: "🎁" },
   { href: "/admin/redemptions", label: "Redeem", icon: "📬" },
   { href: "/admin/points", label: "Points", icon: "💰" },
@@ -20,9 +21,11 @@ const SUPER_LINK = { href: "/admin/super", label: "Super", icon: "🛡️" };
 export default function AdminNav({
   isSuperAdmin = false,
   pendingRedemptionCount = 0,
+  pendingVerificationCount = 0,
 }: {
   isSuperAdmin?: boolean;
   pendingRedemptionCount?: number;
+  pendingVerificationCount?: number;
 }) {
   const pathname = usePathname();
   const { start } = useNavProgress();
@@ -54,6 +57,11 @@ export default function AdminNav({
                   {pendingRedemptionCount}
                 </span>
               )}
+              {link.href === "/admin/verifications" && pendingVerificationCount > 0 && (
+                <span className="text-[10px] bg-accent-amber text-black rounded-full px-1.5 py-0.5 font-bold leading-none">
+                  {pendingVerificationCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -79,6 +87,11 @@ export default function AdminNav({
                 {link.href === "/admin/redemptions" && pendingRedemptionCount > 0 && (
                   <span className="absolute top-1.5 right-1/4 text-[9px] bg-accent-amber text-black rounded-full px-1 py-0.5 font-bold leading-none">
                     {pendingRedemptionCount}
+                  </span>
+                )}
+                {link.href === "/admin/verifications" && pendingVerificationCount > 0 && (
+                  <span className="absolute top-1.5 right-1/4 text-[9px] bg-accent-amber text-black rounded-full px-1 py-0.5 font-bold leading-none">
+                    {pendingVerificationCount}
                   </span>
                 )}
               </Link>
