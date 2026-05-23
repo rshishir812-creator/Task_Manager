@@ -119,11 +119,8 @@ export default function PrivacyPolicy() {
                 This permanently deletes all their data from our database.
               </li>
               <li>
-                <strong className="text-fg">Delete your account:</strong> contact us at{" "}
-                <a href="mailto:support@chorequest.app" className="text-accent-teal underline">
-                  support@chorequest.app
-                </a>{" "}
-                and we will delete all data associated with your family within 30 days.
+                <strong className="text-fg">Delete your account:</strong> contact the developer
+                directly and we will delete all data associated with your family within 30 days.
               </li>
             </ul>
           </section>
@@ -149,11 +146,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="font-display font-semibold text-base text-fg mb-3">9. Contact</h2>
             <p className="text-fg-muted">
-              Questions about this policy? Email us at{" "}
-              <a href="mailto:support@chorequest.app" className="text-accent-teal underline">
-                support@chorequest.app
-              </a>
-              .
+              Questions about this policy? Reach out to the developer directly.
             </p>
           </section>
 

@@ -81,11 +81,7 @@ export default function TermsOfService() {
             <p className="text-fg-muted">
               We reserve the right to suspend or terminate accounts that violate these terms, engage
               in abusive behaviour, or pose a risk to other users. You may delete your account and
-              all associated data at any time by contacting{" "}
-              <a href="mailto:support@chorequest.app" className="text-accent-teal underline">
-                support@chorequest.app
-              </a>
-              .
+              all associated data at any time by contacting the developer directly.
             </p>
           </section>
 
@@ -109,11 +105,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="font-display font-semibold text-base text-fg mb-3">9. Contact</h2>
             <p className="text-fg-muted">
-              Questions about these terms? Email us at{" "}
-              <a href="mailto:support@chorequest.app" className="text-accent-teal underline">
-                support@chorequest.app
-              </a>
-              .
+              Questions about these terms? Reach out to the developer directly.
             </p>
           </section>
 
