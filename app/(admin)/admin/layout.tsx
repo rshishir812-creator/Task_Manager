@@ -8,6 +8,8 @@ import AdminReminderWatcher from "@/components/notifications/AdminReminderWatche
 import EnableNotificationsPrompt from "@/components/notifications/EnableNotificationsPrompt";
 import SignOutButton from "@/components/ui/SignOutButton";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import HelpButton from "@/components/walkthrough/HelpButton";
+import WalkthroughManager from "@/components/walkthrough/WalkthroughManager";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -64,6 +66,7 @@ export default async function AdminLayout({
         <span className="font-display text-xl font-bold text-fg">🛡️ ChoreQuest Admin</span>
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          <HelpButton />
           {profile?.avatar_url && (
             <Image
               src={profile.avatar_url}
@@ -94,6 +97,7 @@ export default async function AdminLayout({
       <SessionWatcher />
       <AdminReminderWatcher adminId={user.id} />
       <EnableNotificationsPrompt userId={user.id} mode="admin" />
+      <WalkthroughManager role="parent" seenAt={profile.walkthrough_seen_at} />
     </div>
     </NavProgressProvider>
   );

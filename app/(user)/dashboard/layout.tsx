@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SignOutButton from "@/components/ui/SignOutButton";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import HelpButton from "@/components/walkthrough/HelpButton";
+import WalkthroughManager from "@/components/walkthrough/WalkthroughManager";
 import BottomNav from "@/components/layout/BottomNav";
 import PageTransition from "@/components/ui/PageTransition";
 import { NavProgressProvider } from "@/components/ui/NavProgress";
@@ -33,6 +35,7 @@ export default async function DashboardLayout({
         <span className="font-display text-xl font-bold text-fg">🎮 ChoreQuest</span>
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          <HelpButton />
           {profile?.avatar_url && (
             <Image
               src={profile.avatar_url}
@@ -54,6 +57,7 @@ export default async function DashboardLayout({
       <SessionWatcher />
       <ReminderManager userId={user.id} />
       <EnableNotificationsPrompt userId={user.id} />
+      <WalkthroughManager role="child" seenAt={profile?.walkthrough_seen_at ?? null} />
     </div>
     </NavProgressProvider>
   );

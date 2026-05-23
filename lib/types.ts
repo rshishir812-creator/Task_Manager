@@ -18,6 +18,7 @@ export interface Profile {
   is_super_admin: boolean;
   created_at: string;
   privacy_consent_given_at: string | null;
+  walkthrough_seen_at: string | null;
 }
 
 export interface ChildInvitation {
