@@ -7,9 +7,13 @@ import {
   computeFamilyScore,
   computeChampionOfWeek,
   computeKidsTodayStatus,
+  computePerChildSparkline,
+  computeChoreDifficultyStats,
 } from "@/lib/insights";
 import FamilyPulseStrip from "@/components/admin/FamilyPulseStrip";
 import ChampionBanner from "@/components/admin/ChampionBanner";
+import PerChildSparkline from "@/components/admin/PerChildSparkline";
+import ChoreDifficultyTable from "@/components/admin/ChoreDifficultyTable";
 import type {
   Chore,
   ChoreAssignment,
@@ -42,7 +46,6 @@ export default async function InsightsPage() {
     );
   }
 
-  // Family-wide chores (shared catalog) + per-kid completions/assignments/badges
   const [{ data: allChoresData }, ...kidQueries] = await Promise.all([
     adminClient
       .from("chores")
@@ -65,14 +68,12 @@ export default async function InsightsPage() {
 
   const allChores = (allChoresData as Chore[] | null) ?? [];
 
-  // For each kid, narrow chores to those they were ever assigned (active or removed)
   const kidsData = kidQueries.map((k) => {
     const assignedIds = new Set(k.assignments.map((a) => a.chore_id));
-    const chores = allChores.filter((c) => assignedIds.has(c.id));
     return {
       profile: k.kid,
       completions: k.completions,
-      chores,
+      chores: allChores.filter((c) => assignedIds.has(c.id)),
       assignments: k.assignments,
       badges: k.badges,
     };
@@ -82,22 +83,37 @@ export default async function InsightsPage() {
   const champion = computeChampionOfWeek(kidsData, today);
   const todayStatus = computeKidsTodayStatus(kidsData, today);
 
-  // Lightweight active-alert detection (Phase 7a — single most urgent)
+  // Active alert
   let alert: string | null = null;
   for (const k of kidsData) {
     const pending = k.completions.filter((c) => c.status === "pending");
     if (pending.length > 0) {
       const first = pending[0]!;
-      const ageHours =
-        first.completed_at
-          ? (Date.now() - new Date(first.completed_at).getTime()) / 3600000
-          : 0;
+      const ageHours = first.completed_at
+        ? (Date.now() - new Date(first.completed_at).getTime()) / 3600000
+        : 0;
       if (ageHours > 24) {
         alert = `${k.profile.name?.split(" ")[0] ?? "A kid"} has a chore waiting > 24h for approval`;
         break;
       }
     }
   }
+
+  // Per-child sparklines
+  const sparklines = kidsData.map((k) => ({
+    kid: k.profile,
+    points: computePerChildSparkline(k.completions, k.chores, k.assignments, today),
+  }));
+
+  // Chore health — aggregate all completions across all kids for the shared chore catalog
+  const allCompletions: ChoreCompletion[] = kidsData.flatMap((k) => k.completions);
+  const allAssignments: ChoreAssignment[] = kidsData.flatMap((k) => k.assignments);
+  const difficultyStats = computeChoreDifficultyStats(
+    allChores.filter((c) => c.is_active),
+    allCompletions,
+    allAssignments,
+    today,
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -116,16 +132,20 @@ export default async function InsightsPage() {
 
       <ChampionBanner champion={champion} />
 
-      {/* Phase 7b will land here: Per-child sparklines, Chore difficulty table, Coaching insights */}
-      <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-6 text-center">
-        <p className="text-2xl mb-2">📊</p>
-        <p className="font-display font-semibold text-fg mb-1">
-          Deeper insights coming soon
-        </p>
-        <p className="text-xs text-fg-muted">
-          Per-child trends, chore difficulty, and coaching cards arrive in the next update.
-        </p>
-      </div>
+      {/* Per-child trend sparklines */}
+      {sparklines.length > 0 && (
+        <div>
+          <h2 className="font-display font-semibold text-fg mb-3">📉 Trends</h2>
+          <div className={`grid gap-3 ${sparklines.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
+            {sparklines.map(({ kid, points }) => (
+              <PerChildSparkline key={kid.id} kid={kid} points={points} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chore health / difficulty table */}
+      <ChoreDifficultyTable stats={difficultyStats} />
     </div>
   );
 }

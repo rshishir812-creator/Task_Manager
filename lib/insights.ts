@@ -1,4 +1,5 @@
 import type {
+  Badge,
   Chore,
   ChoreAssignment,
   ChoreCompletion,
@@ -566,4 +567,305 @@ export function computeKidsTodayStatus(
       total: due.length,
     };
   });
+}
+
+// ============================================================
+// Weekly Recap (Phase 7b)
+// ============================================================
+
+export type WeeklyRecap = {
+  weekStart: string;   // Sun YYYY-MM-DD
+  weekEnd: string;     // Sat YYYY-MM-DD
+  totalChores: number;
+  totalXP: number;
+  bestDayDate: string | null;
+  bestDayChores: number;
+  bestDayXP: number;
+  topChoreName: string | null;
+  topChoreIcon: string | null;
+  topChoreCompleted: number;
+  topChoreScheduled: number;
+  newBadgeTitles: string[];
+  percentVsPrev: number | null;  // null when no prev data; else signed integer %
+  comebacks: number;
+};
+
+/** Returns true when the weekly recap card should be visible (Sunday logic). */
+export function isRecapDay(today: string): boolean {
+  const d = new Date(today + "T12:00:00Z");
+  return d.getUTCDay() === 0;  // Sunday
+}
+
+export function computeWeeklyRecap(
+  completions: ChoreCompletion[],
+  chores: Chore[],
+  assignments: ChoreAssignment[],
+  badges: Badge[],
+  userBadges: UserBadge[],
+  today: string,
+): WeeklyRecap | null {
+  if (!isRecapDay(today)) return null;
+
+  // Last complete week: the Sun-Sat that ended yesterday (Saturday)
+  const todayDate = new Date(today + "T12:00:00Z");  // today is Sunday
+  const weekEnd = new Date(todayDate);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() - 1);      // Saturday
+  const weekStart = new Date(weekEnd);
+  weekStart.setUTCDate(weekStart.getUTCDate() - 6);  // previous Sunday
+
+  const wkStart = weekStart.toISOString().slice(0, 10);
+  const wkEnd = weekEnd.toISOString().slice(0, 10);
+
+  const prevWeekEnd = new Date(weekStart);
+  prevWeekEnd.setUTCDate(prevWeekEnd.getUTCDate() - 1);
+  const prevWeekStart = new Date(prevWeekEnd);
+  prevWeekStart.setUTCDate(prevWeekStart.getUTCDate() - 6);
+  const prevWkStart = prevWeekStart.toISOString().slice(0, 10);
+  const prevWkEnd = prevWeekEnd.toISOString().slice(0, 10);
+
+  const verified = onlyVerified(completions);
+  const weekVerified = verified.filter(
+    (c) => c.completed_date >= wkStart && c.completed_date <= wkEnd,
+  );
+  const prevWeekVerified = verified.filter(
+    (c) => c.completed_date >= prevWkStart && c.completed_date <= prevWkEnd,
+  );
+
+  // Day-level tallies
+  const dayMap = new Map<string, { chores: number; xp: number }>();
+  for (const c of weekVerified) {
+    const row = dayMap.get(c.completed_date) ?? { chores: 0, xp: 0 };
+    row.chores++;
+    row.xp += c.points_earned ?? 0;
+    dayMap.set(c.completed_date, row);
+  }
+
+  let bestDayDate: string | null = null;
+  let bestDayChores = 0;
+  let bestDayXP = 0;
+  dayMap.forEach((row, date) => {
+    if (row.chores > bestDayChores || (row.chores === bestDayChores && row.xp > bestDayXP)) {
+      bestDayDate = date;
+      bestDayChores = row.chores;
+      bestDayXP = row.xp;
+    }
+  });
+
+  // Top chore: most days completed in the week
+  const choreMap = new Map<string, number>();
+  for (const c of weekVerified) choreMap.set(c.chore_id, (choreMap.get(c.chore_id) ?? 0) + 1);
+  let topChoreId = "";
+  let topChoreCount = 0;
+  choreMap.forEach((count, id) => {
+    if (count > topChoreCount) { topChoreCount = count; topChoreId = id; }
+  });
+  const topChoreObj = topChoreId ? chores.find((c) => c.id === topChoreId) ?? null : null;
+
+  // How many times was top chore scheduled this week?
+  let topChoreScheduled = 0;
+  if (topChoreObj) {
+    const assignmentByChoreId = new Map<string, ChoreAssignment>();
+    for (const a of assignments) assignmentByChoreId.set(a.chore_id, a);
+    const cursor = new Date(wkStart + "T00:00:00");
+    const endDate = new Date(wkEnd + "T00:00:00");
+    while (cursor <= endDate) {
+      const dateStr = cursor.toISOString().slice(0, 10);
+      const due = scheduledOnDate([topChoreObj], assignmentByChoreId, dateStr);
+      topChoreScheduled += due.length;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  // New badges earned this week
+  const badgeById = new Map(badges.map((b) => [b.id, b]));
+  const newBadgeTitles = userBadges
+    .filter((ub) => {
+      const d = ub.earned_at.slice(0, 10);
+      return d >= wkStart && d <= wkEnd;
+    })
+    .map((ub) => badgeById.get(ub.badge_id)?.title ?? "Badge")
+    .slice(0, 3);
+
+  // Comebacks this week
+  const weekDates = Array.from(dayMap.keys()).sort();
+  let comebacks = 0;
+  for (let i = 1; i < weekDates.length; i++) {
+    const gap = daysBetween(weekDates[i - 1]!, weekDates[i]!);
+    if (gap >= 2) comebacks++;
+  }
+
+  const totalXP = weekVerified.reduce((s, c) => s + (c.points_earned ?? 0), 0);
+  const prevTotal = prevWeekVerified.length;
+  const percentVsPrev =
+    prevTotal > 0
+      ? Math.round(((weekVerified.length - prevTotal) / prevTotal) * 100)
+      : null;
+
+  return {
+    weekStart: wkStart,
+    weekEnd: wkEnd,
+    totalChores: weekVerified.length,
+    totalXP,
+    bestDayDate,
+    bestDayChores,
+    bestDayXP,
+    topChoreName: topChoreObj?.title ?? null,
+    topChoreIcon: topChoreObj?.icon ?? null,
+    topChoreCompleted: topChoreCount,
+    topChoreScheduled,
+    newBadgeTitles,
+    percentVsPrev,
+    comebacks,
+  };
+}
+
+// ============================================================
+// Per-child weekly sparkline data (Phase 7b)
+// ============================================================
+
+export type SparklinePoint = {
+  weekStart: string;
+  consistencyPct: number;
+};
+
+export function computePerChildSparkline(
+  completions: ChoreCompletion[],
+  chores: Chore[],
+  assignments: ChoreAssignment[],
+  today: string,
+  weeksBack = 8,
+): SparklinePoint[] {
+  const points: SparklinePoint[] = [];
+  const assignmentByChoreId = new Map<string, ChoreAssignment>();
+  for (const a of assignments) assignmentByChoreId.set(a.chore_id, a);
+
+  for (let w = weeksBack - 1; w >= 0; w--) {
+    const endDate = new Date(today + "T00:00:00");
+    endDate.setDate(endDate.getDate() - endDate.getDay() - 1 - (w * 7)); // last Sat of that week
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 6);
+
+    const ws = startDate.toISOString().slice(0, 10);
+    const we = endDate.toISOString().slice(0, 10);
+
+    const { verified, scheduled } = consistencyOver([{ completions, chores, assignments }], ws, we);
+    points.push({
+      weekStart: ws,
+      consistencyPct: scheduled > 0 ? Math.round((verified / scheduled) * 100) : 0,
+    });
+  }
+
+  return points;
+}
+
+// ============================================================
+// Chore difficulty stats (Phase 7b)
+// ============================================================
+
+export type ChoreDifficultyStats = {
+  choreId: string;
+  choreName: string;
+  choreIcon: string | null;
+  completionRate: number;   // verified / scheduled (last N days)
+  denialRate: number;       // denied / (denied + verified) — 0 if none
+  totalScheduled: number;
+  totalCompleted: number;
+  isFlagged: boolean;       // completion < 50% or denial > 30%
+};
+
+export function computeChoreDifficultyStats(
+  chores: Chore[],
+  allCompletions: ChoreCompletion[],
+  allAssignments: ChoreAssignment[],
+  today: string,
+  days = 30,
+): ChoreDifficultyStats[] {
+  const startDate = new Date(today + "T00:00:00");
+  startDate.setDate(startDate.getDate() - (days - 1));
+  const start = startDate.toISOString().slice(0, 10);
+
+  const assignmentByChoreId = new Map<string, ChoreAssignment>();
+  for (const a of allAssignments) assignmentByChoreId.set(a.chore_id, a);
+
+  return chores
+    .filter((c) => c.is_active)
+    .map((chore) => {
+      // Count scheduled days
+      let scheduled = 0;
+      const cursor = new Date(start + "T00:00:00");
+      const endDate = new Date(today + "T00:00:00");
+      while (cursor <= endDate) {
+        const dateStr = cursor.toISOString().slice(0, 10);
+        const due = scheduledOnDate([chore], assignmentByChoreId, dateStr);
+        scheduled += due.length;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      const relevantCompletions = allCompletions.filter(
+        (c) => c.chore_id === chore.id && c.completed_date >= start && c.completed_date <= today,
+      );
+      const verified = relevantCompletions.filter((c) => c.status === "verified").length;
+      const denied = relevantCompletions.filter((c) => c.status === "denied").length;
+
+      const completionRate = scheduled > 0 ? verified / scheduled : 0;
+      const denialRate = verified + denied > 0 ? denied / (verified + denied) : 0;
+      const isFlagged = (scheduled >= 4 && completionRate < 0.5) || denialRate > 0.3;
+
+      return {
+        choreId: chore.id,
+        choreName: chore.title,
+        choreIcon: chore.icon,
+        completionRate,
+        denialRate,
+        totalScheduled: scheduled,
+        totalCompleted: verified,
+        isFlagged,
+      };
+    })
+    .filter((s) => s.totalScheduled > 0)
+    .sort((a, b) => a.completionRate - b.completionRate);
+}
+
+// ============================================================
+// Sibling Cup (Phase 7b)
+// ============================================================
+
+export type SiblingEntry = {
+  kidId: string;
+  name: string;
+  avatarUrl: string | null;
+  weeklyConsistencyPct: number;
+  rank: number;
+};
+
+export function computeSiblingCup(
+  kidsData: Array<{
+    profile: Profile;
+    completions: ChoreCompletion[];
+    chores: Chore[];
+    assignments: ChoreAssignment[];
+  }>,
+  today: string,
+): SiblingEntry[] | null {
+  if (kidsData.length < 2) return null;
+
+  // This week Sun-Sat (including today)
+  const todayDate = new Date(today + "T12:00:00Z");
+  const dow = todayDate.getUTCDay();
+  const thisSunday = new Date(todayDate);
+  thisSunday.setUTCDate(thisSunday.getUTCDate() - dow);
+  const wkStart = thisSunday.toISOString().slice(0, 10);
+
+  const entries: Omit<SiblingEntry, "rank">[] = kidsData.map((k) => {
+    const { verified, scheduled } = consistencyOver([k], wkStart, today);
+    return {
+      kidId: k.profile.id,
+      name: k.profile.name?.split(" ")[0] ?? "Kid",
+      avatarUrl: k.profile.avatar_url,
+      weeklyConsistencyPct: scheduled > 0 ? Math.round((verified / scheduled) * 100) : 0,
+    };
+  });
+
+  entries.sort((a, b) => b.weeklyConsistencyPct - a.weeklyConsistencyPct);
+  return entries.map((e, i) => ({ ...e, rank: i + 1 }));
 }
