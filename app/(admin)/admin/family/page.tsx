@@ -63,6 +63,34 @@ export default async function FamilyPage() {
         </div>
       </section>
 
+      {children.length === 0 && invitations.length === 0 && (
+        <section className="rounded-2xl border border-accent-teal/40 bg-accent-teal/5 p-5">
+          <h2 className="font-display font-bold text-fg flex items-center gap-2 mb-3">
+            <span className="text-xl">🌱</span> How ChoreQuest works
+          </h2>
+          <ol className="flex flex-col gap-2.5">
+            <li className="flex items-start gap-3 text-sm text-fg">
+              <span className="font-display font-bold text-accent-teal w-5 shrink-0">1.</span>
+              <span className="text-xl shrink-0 w-7 text-center">📧</span>
+              <span>You invite your child by their Gmail address.</span>
+            </li>
+            <li className="flex items-start gap-3 text-sm text-fg">
+              <span className="font-display font-bold text-accent-teal w-5 shrink-0">2.</span>
+              <span className="text-xl shrink-0 w-7 text-center">📱</span>
+              <span>They sign in to ChoreQuest with that same Google account.</span>
+            </li>
+            <li className="flex items-start gap-3 text-sm text-fg">
+              <span className="font-display font-bold text-accent-teal w-5 shrink-0">3.</span>
+              <span className="text-xl shrink-0 w-7 text-center">⚔️</span>
+              <span>Their kid dashboard appears here — they start earning points.</span>
+            </li>
+          </ol>
+          <p className="mt-4 text-xs text-fg-muted leading-relaxed border-t border-accent-teal/20 pt-3">
+            Only invited emails can join your family. Anyone else who signs in starts their own.
+          </p>
+        </section>
+      )}
+
       <FamilyPanel
         initialChildren={children}
         initialInvitations={invitations}

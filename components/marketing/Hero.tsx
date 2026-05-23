@@ -70,8 +70,10 @@ export default function Hero({ errorMsg }: HeroProps) {
           )}
         </button>
 
-        <p className="mt-4 text-center text-xs text-fg-muted/70">
-          New or returning — Google sign-in handles both.
+        <p className="mt-4 text-center text-xs text-fg-muted/70 leading-relaxed">
+          <span className="text-fg-muted">First time?</span> You&apos;ll start your own family.
+          <br />
+          <span className="text-fg-muted">Joining someone else&apos;s?</span> Ask them to invite your email first.
         </p>
       </div>
     </div>

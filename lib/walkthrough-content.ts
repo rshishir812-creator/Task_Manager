@@ -13,7 +13,7 @@ export const PARENT_STEPS: WalkthroughStep[] = [
   {
     icon: "👨‍👩‍👧",
     title: "Family",
-    body: "Start here. Add your kids by sending them an invite to their email. You can also add a co-parent or guardian so you both stay in sync.",
+    body: "Add each child with their Gmail — they'll sign in with Google to join YOUR family. Use 'Add a co-parent' only for another adult; if you use it for your child by mistake, they'll join as a parent. Only invited emails can join — everyone else who signs in starts their own family.",
   },
   {
     icon: "⚔️",
