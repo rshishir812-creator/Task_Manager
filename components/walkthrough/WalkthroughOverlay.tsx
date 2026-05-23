@@ -41,14 +41,14 @@ export default function WalkthroughOverlay({ role, isAutoLaunch, onClose }: Walk
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 pt-safe pb-safe overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={dismiss}
       >
         <motion.div
-          className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-bg-elevated shadow-xl overflow-hidden"
+          className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-2xl border border-[var(--border)] bg-bg-elevated shadow-xl overflow-y-auto my-auto"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}

@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
   return (
     // Force dark mode on the landing regardless of user preference.
     <div className="dark">
-      <main className="relative h-[100dvh] overflow-hidden bg-bg text-fg flex flex-col px-6 md:px-12 py-6">
+      <main className="relative h-[100dvh] overflow-hidden bg-bg text-fg flex flex-col px-6 md:px-12 py-6 pt-safe pb-safe">
         {/* Subtle accent vignette */}
         <div
           className="pointer-events-none absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full opacity-[0.18]"

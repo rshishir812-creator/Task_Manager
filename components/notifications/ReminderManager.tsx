@@ -151,7 +151,7 @@ export default function ReminderManager({ userId }: { userId: string }) {
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -30 }}
-          className="fixed top-16 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-sm px-4 py-3 rounded-2xl bg-bg-elevated border border-accent-teal/40 shadow-lg flex items-center gap-3"
+          className="fixed top-below-header left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-sm px-4 py-3 rounded-2xl bg-bg-elevated border border-accent-teal/40 shadow-lg flex items-center gap-3"
         >
           <span className="text-2xl">🎯</span>
           <div className="flex-1 text-sm text-fg">

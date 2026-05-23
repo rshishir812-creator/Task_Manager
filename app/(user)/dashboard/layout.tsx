@@ -32,7 +32,7 @@ export default async function DashboardLayout({
   return (
     <NavProgressProvider color="teal">
     <div className="min-h-screen bg-bg">
-      <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-bg-elevated/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 pt-safe border-b border-[var(--border)] bg-bg-elevated/90 backdrop-blur-sm">
         <span className="flex items-center gap-2 font-display text-xl font-bold text-fg">
           <LogoMark size={22} className="text-accent-teal" />
           ChoreQuest

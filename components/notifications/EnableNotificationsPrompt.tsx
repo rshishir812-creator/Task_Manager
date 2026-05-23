@@ -96,7 +96,7 @@ export default function EnableNotificationsPrompt({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 30 }}
           transition={{ duration: 0.25 }}
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 w-[calc(100%-1.5rem)] max-w-sm px-4 py-3 rounded-2xl bg-bg-elevated border border-[var(--border)] shadow-lg flex items-center gap-3"
+          className="fixed bottom-above-nav left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1.5rem)] max-w-sm px-4 py-3 rounded-2xl bg-bg-elevated border border-[var(--border)] shadow-lg flex items-center gap-3"
         >
           <span className="text-2xl">🔔</span>
           <div className="flex-1 text-sm text-fg">

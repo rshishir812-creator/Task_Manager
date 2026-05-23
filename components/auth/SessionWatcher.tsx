@@ -70,7 +70,7 @@ export default function SessionWatcher() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl bg-bg-elevated border border-accent-amber/40 shadow-lg text-sm text-fg max-w-xs text-center"
+          className="fixed bottom-above-nav left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl bg-bg-elevated border border-accent-amber/40 shadow-lg text-sm text-fg max-w-xs text-center"
         >
           ⏰ Session expired — signing you back in…
         </motion.div>
