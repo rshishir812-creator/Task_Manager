@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nunito, Baloo_2 } from "next/font/google";
 import "./globals.css";
 
@@ -12,9 +12,22 @@ const baloo = Baloo_2({
   variable: "--font-baloo",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0B0F2A",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "ChoreQuest",
-  description: "Gamified daily chores adventure",
+  description: "Gamified daily chores for kids and parents",
+  applicationName: "ChoreQuest",
+  appleWebApp: {
+    capable: true,
+    title: "ChoreQuest",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({
