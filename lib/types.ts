@@ -156,6 +156,23 @@ export interface Redemption {
   decided_note: string | null;
 }
 
+export type FeedbackStatus = "new" | "in_progress" | "resolved" | "archived";
+
+export interface Feedback {
+  id: string;
+  family_id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  subject: string;
+  message: string;
+  status: FeedbackStatus;
+  admin_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
 // Supabase Database type for typed client
 export type Database = {
   public: {
@@ -173,6 +190,7 @@ export type Database = {
       rewards: { Row: Reward; Insert: Omit<Reward, "id" | "created_at">; Update: Partial<Reward> };
       reward_assignments: { Row: RewardAssignment; Insert: RewardAssignment; Update: Partial<RewardAssignment> };
       redemptions: { Row: Redemption; Insert: Omit<Redemption, "id" | "requested_at">; Update: Partial<Redemption> };
+      feedback: { Row: Feedback; Insert: Omit<Feedback, "id" | "created_at" | "status" | "admin_note" | "reviewed_by" | "reviewed_at"> & { status?: FeedbackStatus }; Update: Partial<Feedback> };
     };
     Views: Record<string, unknown>;
     Functions: Record<string, unknown>;

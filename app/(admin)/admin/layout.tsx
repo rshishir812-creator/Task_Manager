@@ -11,6 +11,7 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 import HelpButton from "@/components/walkthrough/HelpButton";
 import WalkthroughManager from "@/components/walkthrough/WalkthroughManager";
 import LogoMark from "@/components/marketing/LogoMark";
+import ContactUsButton from "@/components/feedback/ContactUsButton";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -59,6 +60,16 @@ export default async function AdminLayout({
     pendingVerificationCount = count ?? 0;
   }
 
+  // New feedback count — only computed for super admins (nav entry hidden otherwise)
+  let newFeedbackCount = 0;
+  if (profile.is_super_admin) {
+    const { count } = await adminClient
+      .from("feedback")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "new");
+    newFeedbackCount = count ?? 0;
+  }
+
   return (
     <NavProgressProvider color="amber">
     <div className="min-h-screen bg-bg flex flex-col">
@@ -71,6 +82,7 @@ export default async function AdminLayout({
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <HelpButton />
+          <ContactUsButton email={profile.email} userName={profile.name} />
           {profile?.avatar_url && (
             <Image
               src={profile.avatar_url}
@@ -93,6 +105,7 @@ export default async function AdminLayout({
           isSuperAdmin={profile.is_super_admin}
           pendingRedemptionCount={pendingCount ?? 0}
           pendingVerificationCount={pendingVerificationCount}
+          newFeedbackCount={newFeedbackCount}
         />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
           {children}

@@ -17,20 +17,23 @@ const BASE_LINKS = [
   { href: "/admin/family", label: "Family", icon: "👨‍👩‍👧" },
 ];
 
+const FEEDBACK_LINK = { href: "/admin/feedback", label: "Feedback", icon: "✉️" };
 const SUPER_LINK = { href: "/admin/super", label: "Super", icon: "🛡️" };
 
 export default function AdminNav({
   isSuperAdmin = false,
   pendingRedemptionCount = 0,
   pendingVerificationCount = 0,
+  newFeedbackCount = 0,
 }: {
   isSuperAdmin?: boolean;
   pendingRedemptionCount?: number;
   pendingVerificationCount?: number;
+  newFeedbackCount?: number;
 }) {
   const pathname = usePathname();
   const { start } = useNavProgress();
-  const links = isSuperAdmin ? [...BASE_LINKS, SUPER_LINK] : BASE_LINKS;
+  const links = isSuperAdmin ? [...BASE_LINKS, FEEDBACK_LINK, SUPER_LINK] : BASE_LINKS;
 
   return (
     <>
@@ -63,6 +66,11 @@ export default function AdminNav({
                   {pendingVerificationCount}
                 </span>
               )}
+              {link.href === "/admin/feedback" && newFeedbackCount > 0 && (
+                <span className="text-[10px] bg-accent-amber text-black rounded-full px-1.5 py-0.5 font-bold leading-none">
+                  {newFeedbackCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -93,6 +101,11 @@ export default function AdminNav({
                 {link.href === "/admin/verifications" && pendingVerificationCount > 0 && (
                   <span className="absolute top-1.5 right-1/4 text-[9px] bg-accent-amber text-black rounded-full px-1 py-0.5 font-bold leading-none">
                     {pendingVerificationCount}
+                  </span>
+                )}
+                {link.href === "/admin/feedback" && newFeedbackCount > 0 && (
+                  <span className="absolute top-1.5 right-1/4 text-[9px] bg-accent-amber text-black rounded-full px-1 py-0.5 font-bold leading-none">
+                    {newFeedbackCount}
                   </span>
                 )}
               </Link>
