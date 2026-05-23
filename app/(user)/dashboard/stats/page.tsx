@@ -2,19 +2,32 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getLevelInfo } from "@/lib/points-calculator";
-import { getTodayIST } from "@/lib/streak-calculator";
-import { getAssignedChoreIds } from "@/lib/auth-scope";
-import XPBar from "@/components/gamification/XPBar";
+import {
+  getTodayIST,
+  getDayOfWeek,
+  computeOverallStreak,
+  onlyVerified,
+} from "@/lib/streak-calculator";
+import { getAssignedChoreIds, getAssignmentsForUser } from "@/lib/auth-scope";
+import {
+  computePersonalRecords,
+  generateHeroVibeLine,
+  pointsThisWeek,
+} from "@/lib/insights";
+import { computeMilestones } from "@/lib/milestone-calculator";
+import HeroBanner from "@/components/stats/HeroBanner";
+import PersonalRecordsWall from "@/components/stats/PersonalRecordsWall";
+import UpNextBadges from "@/components/stats/UpNextBadges";
 import StreakFlame from "@/components/gamification/StreakFlame";
-import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile } from "@/lib/types";
-
-function startOf(period: "week" | "month", today: string): string {
-  if (period === "month") return today.slice(0, 8) + "01";
-  const parts = today.split("-").map(Number);
-  const dt = new Date(Date.UTC(parts[0] ?? 2000, (parts[1] ?? 1) - 1, parts[2] ?? 1));
-  dt.setUTCDate(dt.getUTCDate() - dt.getUTCDay()); // back to Sunday
-  return dt.toISOString().slice(0, 10);
-}
+import type {
+  Chore,
+  ChoreCompletion,
+  Streak,
+  DailyBonus,
+  Profile,
+  Badge,
+  UserBadge,
+} from "@/lib/types";
 
 export default async function StatsPage() {
   const supabase = createClient();
@@ -24,7 +37,10 @@ export default async function StatsPage() {
   const adminClient = createAdminClient();
 
   const { data: profileData } = await adminClient
-    .from("profiles").select("family_id").eq("id", user.id).single();
+    .from("profiles")
+    .select("family_id")
+    .eq("id", user.id)
+    .single();
   const profile = profileData as Pick<Profile, "family_id"> | null;
   if (!profile) redirect("/login");
 
@@ -33,13 +49,24 @@ export default async function StatsPage() {
     { data: completionsData },
     { data: streaksData },
     { data: bonusesData },
+    { data: badgesData },
+    { data: userBadgesData },
     assignedIds,
+    assignments,
   ] = await Promise.all([
-    adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id).order("sort_order"),
+    adminClient
+      .from("chores")
+      .select("*")
+      .eq("is_active", true)
+      .eq("family_id", profile.family_id)
+      .order("sort_order"),
     adminClient.from("chore_completions").select("*").eq("user_id", user.id),
     adminClient.from("streaks").select("*").eq("user_id", user.id),
     adminClient.from("daily_bonuses").select("*").eq("user_id", user.id),
+    adminClient.from("badges").select("*").eq("family_id", profile.family_id),
+    adminClient.from("user_badges").select("*").eq("user_id", user.id),
     getAssignedChoreIds(user.id),
+    getAssignmentsForUser(user.id),
   ]);
 
   const allChores = (choresData as Chore[] | null) ?? [];
@@ -47,6 +74,11 @@ export default async function StatsPage() {
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
   const streaks = (streaksData as Streak[] | null) ?? [];
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];
+  const badges = (badgesData as Badge[] | null) ?? [];
+  const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
+
+  const today = getTodayIST();
+  const todayDow = getDayOfWeek(today);
 
   const totalPoints =
     completions.reduce((s, c) => s + (c.points_earned ?? 0), 0) +
@@ -54,48 +86,73 @@ export default async function StatsPage() {
 
   const levelInfo = getLevelInfo(totalPoints);
 
-  const today = getTodayIST();
-  const weekStart = startOf("week", today);
-  const monthStart = startOf("month", today);
+  // Records
+  const records = computePersonalRecords(completions, streaks, today);
 
-  const weekPoints = completions
-    .filter((c) => c.completed_date >= weekStart)
-    .reduce((s, c) => s + (c.points_earned ?? 0), 0);
+  // Milestones (for Up Next + vibe line)
+  const milestones = computeMilestones({
+    badges,
+    userBadges,
+    chores,
+    completions,
+    today,
+    assignments,
+  });
 
-  const monthPoints = completions
-    .filter((c) => c.completed_date >= monthStart)
-    .reduce((s, c) => s + (c.points_earned ?? 0), 0);
+  // Today's progress (for vibe)
+  const todaysChores = chores.filter((c) => c.recurrence.includes(todayDow));
+  const todayCompletedIds = new Set(
+    onlyVerified(completions)
+      .filter((c) => c.completed_date === today)
+      .map((c) => c.chore_id),
+  );
+  const todayCompletedCount = todaysChores.filter((c) =>
+    todayCompletedIds.has(c.id),
+  ).length;
+
+  const currentOverallStreak = computeOverallStreak(
+    chores,
+    completions,
+    today,
+    assignments,
+  );
+
+  // Vibe line
+  const vibeLine = generateHeroVibeLine({
+    currentOverallStreak,
+    nearestMilestone: milestones[0]
+      ? {
+          distance: milestones[0].distance,
+          badgeTitle: milestones[0].badge.title,
+        }
+      : undefined,
+    thisWeekPoints: pointsThisWeek(completions, today),
+    bestWeekPoints: records.bestWeek.value,
+    todayCompletedCount,
+    todayScheduledCount: todaysChores.length,
+  });
 
   const overallStreak = streaks.find((s) => s.chore_id === null);
   const choreStreaksSorted = [...streaks]
-    .filter((s) => s.chore_id !== null)
+    .filter((s) => s.chore_id !== null && s.current_streak > 0)
     .sort((a, b) => b.current_streak - a.current_streak);
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display font-bold text-2xl text-fg">Your Stats 📊</h1>
+      <h1 className="font-display font-bold text-2xl text-fg">Quest Log 📜</h1>
 
-      {/* Level / XP card */}
-      <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-xs text-fg-muted uppercase tracking-wide">Total XP</p>
-            <p className="font-display font-bold text-3xl text-accent-amber">
-              {totalPoints.toLocaleString()}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-fg-muted uppercase tracking-wide">Level</p>
-            <p className="font-display font-bold text-3xl text-accent-teal">
-              {levelInfo.level}
-            </p>
-          </div>
-        </div>
-        <XPBar totalPoints={totalPoints} />
-      </div>
+      <HeroBanner
+        totalPoints={totalPoints}
+        vibeLine={vibeLine}
+        level={levelInfo.level}
+      />
 
-      {/* Overall streak */}
-      {overallStreak && (
+      <PersonalRecordsWall records={records} />
+
+      <UpNextBadges milestones={milestones} />
+
+      {/* Overall streak detail (keep — kids love this) */}
+      {overallStreak && overallStreak.current_streak > 0 && (
         <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-5 flex items-center justify-between">
           <div>
             <p className="font-display font-semibold text-fg">Daily Streak</p>
@@ -107,22 +164,12 @@ export default async function StatsPage() {
         </div>
       )}
 
-      {/* Points breakdown */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-4 text-center">
-          <p className="font-display font-bold text-2xl text-fg">{weekPoints}</p>
-          <p className="text-xs text-fg-muted mt-1">This Week</p>
-        </div>
-        <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-4 text-center">
-          <p className="font-display font-bold text-2xl text-fg">{monthPoints}</p>
-          <p className="text-xs text-fg-muted mt-1">This Month</p>
-        </div>
-      </div>
-
-      {/* Per-chore streak leaderboard */}
+      {/* Per-chore streaks — only show active ones */}
       {choreStreaksSorted.length > 0 && (
         <div>
-          <h2 className="font-display font-semibold text-fg mb-3">🏅 Chore Streaks</h2>
+          <h2 className="font-display font-semibold text-fg mb-3">
+            🏅 Active Chore Streaks
+          </h2>
           <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated overflow-hidden">
             {choreStreaksSorted.map((s, i) => {
               const chore = chores.find((c) => c.id === s.chore_id);
@@ -151,10 +198,12 @@ export default async function StatsPage() {
         </div>
       )}
 
-      {/* Completion count */}
+      {/* Total chores done */}
       <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-4 text-center">
-        <p className="font-display font-bold text-3xl text-fg">{completions.length}</p>
-        <p className="text-sm text-fg-muted mt-1">Total chores completed 🎯</p>
+        <p className="font-display font-bold text-3xl text-fg">
+          {onlyVerified(completions).length}
+        </p>
+        <p className="text-sm text-fg-muted mt-1">Total chores conquered 🎯</p>
       </div>
     </div>
   );

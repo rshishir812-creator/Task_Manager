@@ -3,11 +3,18 @@ import { redirect } from "next/navigation";
 import { getTodayIST, getDayOfWeek, getChoresForDay, computeOverallStreak } from "@/lib/streak-calculator";
 import { getLevelInfo } from "@/lib/points-calculator";
 import { getParentContext, resolveChild, getChildrenOfFamily, getAssignmentsForUser } from "@/lib/auth-scope";
+import {
+  computeFamilyScore,
+  computeChampionOfWeek,
+  computeKidsTodayStatus,
+} from "@/lib/insights";
 import UserMirror from "@/components/admin/UserMirror";
 import StreakFlame from "@/components/gamification/StreakFlame";
 import ChildPicker from "@/components/admin/ChildPicker";
+import FamilyPulseStrip from "@/components/admin/FamilyPulseStrip";
+import ChampionBanner from "@/components/admin/ChampionBanner";
 import Link from "next/link";
-import type { Chore, ChoreCompletion, DailyBonus, UserBadge, Streak } from "@/lib/types";
+import type { Chore, ChoreAssignment, ChoreCompletion, DailyBonus, UserBadge, Streak } from "@/lib/types";
 
 export default async function AdminDashboard({
   searchParams,
@@ -89,7 +96,39 @@ export default async function AdminDashboard({
       ? Math.round((todayCompletedCount / todaysChores.length) * 100)
       : 0;
 
+  // Family-wide data for Pulse + Champion (across ALL kids in the family)
+  const allKidQueries = await Promise.all(
+    allChildren.map((kid) =>
+      Promise.all([
+        adminClient.from("chore_completions").select("*").eq("user_id", kid.id),
+        adminClient.from("chore_assignments").select("*").eq("user_id", kid.id),
+        adminClient.from("user_badges").select("*").eq("user_id", kid.id),
+      ]).then(([comps, assigns, badges]) => ({
+        profile: kid,
+        completions: (comps.data as ChoreCompletion[] | null) ?? [],
+        assignments: (assigns.data as ChoreAssignment[] | null) ?? [],
+        badges: (badges.data as UserBadge[] | null) ?? [],
+      })),
+    ),
+  );
+
+  const familyKidsData = allKidQueries.map((k) => {
+    const assignedIds = new Set(k.assignments.map((a) => a.chore_id));
+    return {
+      profile: k.profile,
+      completions: k.completions,
+      chores: allChores.filter((c) => assignedIds.has(c.id)),
+      assignments: k.assignments,
+      badges: k.badges,
+    };
+  });
+
+  const familyScore = computeFamilyScore(familyKidsData, today);
+  const champion = computeChampionOfWeek(familyKidsData, today);
+  const todayStatus = computeKidsTodayStatus(familyKidsData, today);
+
   const quickLinks = [
+    { href: "/admin/insights", icon: "📈", label: "Family Insights" },
     { href: "/admin/chores", icon: "⚔️", label: "Manage Chores" },
     { href: "/admin/badges", icon: "🏅", label: "Manage Badges" },
     { href: "/admin/calendar", icon: "📅", label: "Calendar View" },
@@ -105,6 +144,20 @@ export default async function AdminDashboard({
         <p className="text-sm text-fg-muted mt-1">
           {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
         </p>
+      </div>
+
+      <FamilyPulseStrip score={familyScore} todayStatus={todayStatus} alert={null} />
+
+      <ChampionBanner champion={champion} />
+
+      <div className="flex items-center justify-between gap-2 -my-1">
+        <p className="text-xs text-fg-muted">Drill into a specific child below, or open the full insights view.</p>
+        <Link
+          href="/admin/insights"
+          className="text-xs text-accent-teal font-semibold whitespace-nowrap hover:underline"
+        >
+          See all insights →
+        </Link>
       </div>
 
       <ChildPicker kids={allChildren} currentChildId={ridham.id} />

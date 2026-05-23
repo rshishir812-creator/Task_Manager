@@ -9,6 +9,7 @@ const BASE_LINKS = [
   { href: "/admin/chores", label: "Chores", icon: "⚔️" },
   { href: "/admin/badges", label: "Badges", icon: "🏅" },
   { href: "/admin/calendar", label: "Calendar", icon: "📅" },
+  { href: "/admin/insights", label: "Insights", icon: "📈" },
   { href: "/admin/verifications", label: "Verify", icon: "🔍" },
   { href: "/admin/rewards", label: "Rewards", icon: "🎁" },
   { href: "/admin/redemptions", label: "Redeem", icon: "📬" },

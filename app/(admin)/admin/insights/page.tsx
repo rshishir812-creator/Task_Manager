@@ -1,0 +1,131 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getTodayIST } from "@/lib/streak-calculator";
+import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import {
+  computeFamilyScore,
+  computeChampionOfWeek,
+  computeKidsTodayStatus,
+} from "@/lib/insights";
+import FamilyPulseStrip from "@/components/admin/FamilyPulseStrip";
+import ChampionBanner from "@/components/admin/ChampionBanner";
+import type {
+  Chore,
+  ChoreAssignment,
+  ChoreCompletion,
+  UserBadge,
+} from "@/lib/types";
+
+export default async function InsightsPage() {
+  const ctx = await getParentContext();
+  if (!ctx) redirect("/login");
+
+  const adminClient = createAdminClient();
+  const kids = await getChildrenOfFamily(ctx.familyId);
+  const today = getTodayIST();
+
+  if (kids.length === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="font-display font-bold text-2xl text-fg">Family Insights 📈</h1>
+        <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-8 text-center">
+          <p className="text-fg-muted mb-4">No children added yet.</p>
+          <Link
+            href="/admin/family"
+            className="inline-block rounded-xl bg-accent-amber/20 text-accent-amber px-4 py-2 text-sm font-semibold hover:bg-accent-amber/40 transition-colors"
+          >
+            Add your first child →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Family-wide chores (shared catalog) + per-kid completions/assignments/badges
+  const [{ data: allChoresData }, ...kidQueries] = await Promise.all([
+    adminClient
+      .from("chores")
+      .select("*")
+      .eq("family_id", ctx.familyId)
+      .order("sort_order"),
+    ...kids.map((kid) =>
+      Promise.all([
+        adminClient.from("chore_completions").select("*").eq("user_id", kid.id),
+        adminClient.from("chore_assignments").select("*").eq("user_id", kid.id),
+        adminClient.from("user_badges").select("*").eq("user_id", kid.id),
+      ]).then(([comps, assigns, badges]) => ({
+        kid,
+        completions: (comps.data as ChoreCompletion[] | null) ?? [],
+        assignments: (assigns.data as ChoreAssignment[] | null) ?? [],
+        badges: (badges.data as UserBadge[] | null) ?? [],
+      })),
+    ),
+  ]);
+
+  const allChores = (allChoresData as Chore[] | null) ?? [];
+
+  // For each kid, narrow chores to those they were ever assigned (active or removed)
+  const kidsData = kidQueries.map((k) => {
+    const assignedIds = new Set(k.assignments.map((a) => a.chore_id));
+    const chores = allChores.filter((c) => assignedIds.has(c.id));
+    return {
+      profile: k.kid,
+      completions: k.completions,
+      chores,
+      assignments: k.assignments,
+      badges: k.badges,
+    };
+  });
+
+  const familyScore = computeFamilyScore(kidsData, today);
+  const champion = computeChampionOfWeek(kidsData, today);
+  const todayStatus = computeKidsTodayStatus(kidsData, today);
+
+  // Lightweight active-alert detection (Phase 7a — single most urgent)
+  let alert: string | null = null;
+  for (const k of kidsData) {
+    const pending = k.completions.filter((c) => c.status === "pending");
+    if (pending.length > 0) {
+      const first = pending[0]!;
+      const ageHours =
+        first.completed_at
+          ? (Date.now() - new Date(first.completed_at).getTime()) / 3600000
+          : 0;
+      if (ageHours > 24) {
+        alert = `${k.profile.name?.split(" ")[0] ?? "A kid"} has a chore waiting > 24h for approval`;
+        break;
+      }
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="font-display font-bold text-2xl text-fg">Family Insights 📈</h1>
+        <p className="text-sm text-fg-muted mt-1">
+          {new Date().toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+        </p>
+      </div>
+
+      <FamilyPulseStrip score={familyScore} todayStatus={todayStatus} alert={alert} />
+
+      <ChampionBanner champion={champion} />
+
+      {/* Phase 7b will land here: Per-child sparklines, Chore difficulty table, Coaching insights */}
+      <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-6 text-center">
+        <p className="text-2xl mb-2">📊</p>
+        <p className="font-display font-semibold text-fg mb-1">
+          Deeper insights coming soon
+        </p>
+        <p className="text-xs text-fg-muted">
+          Per-child trends, chore difficulty, and coaching cards arrive in the next update.
+        </p>
+      </div>
+    </div>
+  );
+}
