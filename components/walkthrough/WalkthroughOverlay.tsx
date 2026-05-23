@@ -48,7 +48,7 @@ export default function WalkthroughOverlay({ role, isAutoLaunch, onClose }: Walk
         onClick={dismiss}
       >
         <motion.div
-          className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-2xl border border-[var(--border)] bg-bg-elevated shadow-xl overflow-y-auto my-auto"
+          className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-bg-elevated shadow-xl my-auto"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}

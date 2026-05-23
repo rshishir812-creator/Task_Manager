@@ -61,15 +61,15 @@ export default function ContactUsModal({ email, userName, onClose }: ContactUsMo
         onClick={onClose}
       >
         <motion.div
-          className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-2xl border border-[var(--border)] bg-bg-elevated shadow-xl flex flex-col my-auto"
+          className="relative w-full max-w-md rounded-2xl border border-[var(--border)] bg-bg-elevated shadow-xl my-auto"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 26 }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Sticky header bar with title + close — always visible */}
-          <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0 border-b border-[var(--border)]/60 rounded-t-2xl bg-bg-elevated">
+          {/* Header bar with title + close */}
+          <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-[var(--border)]/60 rounded-t-2xl">
             <h2 className="font-display font-bold text-lg text-fg">
               {submitted ? "Sent" : "Contact us"}
             </h2>
@@ -82,8 +82,8 @@ export default function ContactUsModal({ email, userName, onClose }: ContactUsMo
             </button>
           </div>
 
-          {/* Scrollable body */}
-          <div className="overflow-y-auto">
+          {/* Body */}
+          <div>
             {submitted ? (
               <div className="px-6 py-12 text-center">
                 <div className="text-5xl mb-3">✉️</div>
