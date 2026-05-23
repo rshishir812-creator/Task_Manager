@@ -11,7 +11,6 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 import HelpButton from "@/components/walkthrough/HelpButton";
 import WalkthroughManager from "@/components/walkthrough/WalkthroughManager";
 import LogoMark from "@/components/marketing/LogoMark";
-import ContactUsButton from "@/components/feedback/ContactUsButton";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -82,7 +81,6 @@ export default async function AdminLayout({
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <HelpButton />
-          <ContactUsButton email={profile.email} userName={profile.name} />
           {profile?.avatar_url && (
             <Image
               src={profile.avatar_url}
@@ -106,6 +104,8 @@ export default async function AdminLayout({
           pendingRedemptionCount={pendingCount ?? 0}
           pendingVerificationCount={pendingVerificationCount}
           newFeedbackCount={newFeedbackCount}
+          userEmail={profile.email}
+          userName={profile.name}
         />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
           {children}
