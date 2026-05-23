@@ -4,6 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { AnimatePresence, motion } from "framer-motion";
 
+const INTENTIONAL_SIGNOUT_KEY = "chorequest:intentional-signout";
+
+function consumeIntentionalSignOut(): boolean {
+  try {
+    if (sessionStorage.getItem(INTENTIONAL_SIGNOUT_KEY) === "1") {
+      sessionStorage.removeItem(INTENTIONAL_SIGNOUT_KEY);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export default function SessionWatcher() {
   const [expired, setExpired] = useState(false);
   const redirectingRef = useRef(false);
@@ -21,7 +35,16 @@ export default function SessionWatcher() {
     };
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session)) {
+      if (event === "SIGNED_OUT") {
+        // Intentional sign-out from SignOutButton — silent, no toast.
+        // The button itself is already navigating to /login.
+        if (consumeIntentionalSignOut()) {
+          redirectingRef.current = true;
+          return;
+        }
+        triggerExpired();
+      } else if (event === "TOKEN_REFRESHED" && !session) {
+        // Refresh failed — show the expired toast.
         triggerExpired();
       }
     });

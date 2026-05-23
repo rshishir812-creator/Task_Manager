@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface HeroProps {
@@ -7,14 +9,27 @@ interface HeroProps {
 }
 
 export default function Hero({ errorMsg }: HeroProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
   async function handleGoogleSignIn() {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        setIsLoading(false);
+      }
+      // On success, the browser is navigating to Google — keep the loading
+      // state until the redirect tears the page down.
+    } catch {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -38,18 +53,26 @@ export default function Hero({ errorMsg }: HeroProps) {
       <div className="mt-7">
         <button
           onClick={handleGoogleSignIn}
-          className="w-full flex items-center justify-center gap-3 rounded-full bg-accent-teal text-black font-hero font-extrabold text-base md:text-lg px-8 py-4 transition-transform hover:scale-[1.02] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-accent-teal focus:ring-offset-2 focus:ring-offset-bg"
+          disabled={isLoading}
+          aria-busy={isLoading}
+          className="w-full flex items-center justify-center gap-3 rounded-full bg-accent-teal text-black font-hero font-extrabold text-base md:text-lg px-8 py-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.99] disabled:cursor-wait disabled:hover:scale-100 disabled:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent-teal focus:ring-offset-2 focus:ring-offset-bg"
         >
-          Start free
-          <span aria-hidden="true">→</span>
+          {isLoading ? (
+            <>
+              <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+              <span>Connecting…</span>
+            </>
+          ) : (
+            <>
+              <span>Continue with Google</span>
+              <span aria-hidden="true">→</span>
+            </>
+          )}
         </button>
 
-        <button
-          onClick={handleGoogleSignIn}
-          className="w-full mt-4 text-sm text-fg-muted hover:text-fg transition-colors font-hero font-medium"
-        >
-          I already have an account
-        </button>
+        <p className="mt-4 text-center text-xs text-fg-muted/70">
+          New or returning — Google sign-in handles both.
+        </p>
       </div>
     </div>
   );
