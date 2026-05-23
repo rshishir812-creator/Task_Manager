@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "ChoreQuest",
     short_name: "ChoreQuest",
-    description: "Gamified daily chores for kids and parents",
+    description: "Make chores a quest. Not a fight.",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#0B0F2A",

@@ -10,6 +10,7 @@ import SignOutButton from "@/components/ui/SignOutButton";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import HelpButton from "@/components/walkthrough/HelpButton";
 import WalkthroughManager from "@/components/walkthrough/WalkthroughManager";
+import LogoMark from "@/components/marketing/LogoMark";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -63,7 +64,10 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-bg flex flex-col">
       {/* Top bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-bg-elevated/90 backdrop-blur-sm">
-        <span className="font-display text-xl font-bold text-fg">🛡️ ChoreQuest Admin</span>
+        <span className="flex items-center gap-2 font-display text-xl font-bold text-fg">
+          <LogoMark size={22} className="text-accent-teal" />
+          ChoreQuest <span className="text-accent-amber text-sm font-display font-bold ml-1">Admin</span>
+        </span>
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <HelpButton />

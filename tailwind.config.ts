@@ -30,6 +30,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-nunito)", "system-ui", "sans-serif"],
         display: ["var(--font-baloo)", "system-ui", "sans-serif"],
+        hero: ["var(--font-hero)", "system-ui", "sans-serif"],
       },
     },
   },

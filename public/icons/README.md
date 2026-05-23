@@ -1,39 +1,37 @@
 # Visual asset provenance
 
-This folder holds the PWA / app icons shipped with ChoreQuest. We track
-where each file came from so there's no copyright ambiguity later.
+All visual brand assets in this folder are derived from one source SVG:
+**`logo-mark.svg`** — a circle ring with a checkmark inside, designed
+in-house by the ChoreQuest maintainer (via Claude Code), 2026.
 
 ## Files
 
 | File | Size | Purpose | Source |
 |---|---|---|---|
-| `icon-192.png` | 192×192 | PWA standard icon | _TBD — please update with actual origin_ |
-| `icon-512.png` | 512×512 | PWA high-res icon | _TBD — please update with actual origin_ |
-| `icon-maskable-192.png` | 192×192 | PWA adaptive icon (Android) | _TBD — please update with actual origin_ |
-| `icon-maskable-512.png` | 512×512 | PWA adaptive icon (Android) | _TBD — please update with actual origin_ |
-| `../apple-touch-icon.png` | 180×180 | iOS / iPadOS home-screen icon | _TBD — please update with actual origin_ |
-| `../../app/favicon.ico` | 16/32 px | Browser tab favicon | _TBD — please update with actual origin_ |
+| `logo-mark.svg` | vector | Master mark | Hand-designed SVG (this repo) |
+| `icon-192.png` | 192×192 | PWA standard icon | Generated from `logo-mark.svg` via `scripts/generate-icons.mjs` |
+| `icon-512.png` | 512×512 | PWA high-res icon | Same |
+| `icon-maskable-192.png` | 192×192 | PWA adaptive icon (Android) | Same, with 22% safe-area padding |
+| `icon-maskable-512.png` | 512×512 | PWA adaptive icon (Android) | Same |
+| `../apple-touch-icon.png` | 180×180 | iOS home-screen icon | Same |
 
-## How to fill in "Source"
+The favicon and Apple touch icon are also generated dynamically by
+Next.js at request time via `app/icon.tsx` and `app/apple-icon.tsx`,
+which embed the same SVG geometry inline.
 
-For each file, record **one** of:
+## Regenerating
 
-- `Generated via <tool URL> on YYYY-MM-DD from <source image>` (e.g.
-  RealFaviconGenerator, PWA Asset Generator, pwabuilder.com)
-- `Hand-drawn by <name> in Figma / Canva / etc. on YYYY-MM-DD`
-- `Generated via <AI tool> (e.g. DALL·E, Midjourney) on YYYY-MM-DD —
-  commercial-use rights confirmed at <link to TOS>`
+To rebuild all PNGs from the SVG after editing `logo-mark.svg`:
 
-The goal is one sentence per file proving we have the right to use it.
+```bash
+node scripts/generate-icons.mjs
+```
 
-## Regenerating from scratch
+The script uses `sharp` (devDependency). Output paths are listed at
+the top of the script.
 
-If origin can't be confirmed, regenerate via any of:
+## Licence
 
-- [RealFaviconGenerator](https://realfavicongenerator.net) — Apache 2.0
-- [PWA Asset Generator](https://github.com/onderceylan/pwa-asset-generator) — MIT
-- Figma / Canva (output is owned by you)
-
-Feed in the existing 🎮 emoji or a hand-drawn ChoreQuest wordmark as the
-source image, output 192 / 512 / maskable / apple-touch sizes, drop into
-this folder, then update the table above.
+These assets are part of the ChoreQuest project. No third-party imagery
+is incorporated. The SVG is original work — free to use anywhere within
+this project.

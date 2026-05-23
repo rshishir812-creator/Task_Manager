@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito, Baloo_2 } from "next/font/google";
+import { Nunito, Baloo_2, Inter } from "next/font/google";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -12,6 +12,12 @@ const baloo = Baloo_2({
   variable: "--font-baloo",
 });
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-hero",
+  weight: ["400", "600", "800", "900"],
+});
+
 export const viewport: Viewport = {
   themeColor: "#0B0F2A",
   width: "device-width",
@@ -20,13 +26,24 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ChoreQuest",
-  description: "Gamified daily chores for kids and parents",
+  title: "ChoreQuest — Make chores a quest. Not a fight.",
+  description: "ChoreQuest turns daily habits into a game your kids actually want to play.",
   applicationName: "ChoreQuest",
   appleWebApp: {
     capable: true,
     title: "ChoreQuest",
     statusBarStyle: "black-translucent",
+  },
+  openGraph: {
+    title: "ChoreQuest — Make chores a quest. Not a fight.",
+    description: "ChoreQuest turns daily habits into a game your kids actually want to play.",
+    siteName: "ChoreQuest",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ChoreQuest — Make chores a quest. Not a fight.",
+    description: "ChoreQuest turns daily habits into a game your kids actually want to play.",
   },
 };
 
@@ -36,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${nunito.variable} ${baloo.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${nunito.variable} ${baloo.variable} ${inter.variable}`}>
       <head>
         {/* Prevent flash of wrong theme */}
         <script
