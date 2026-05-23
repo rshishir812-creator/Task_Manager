@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LogIn } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import Link from "next/link";
 import { Suspense } from "react";
 
 function LoginContent() {
@@ -76,6 +77,11 @@ function LoginContent() {
         <div className="text-center text-xs text-fg-muted space-y-1.5 mt-1">
           <p><strong className="text-fg">New here?</strong> Sign in with Google — we&apos;ll set up your family.</p>
           <p><strong className="text-fg">Got an invite?</strong> Sign in with the email your parent used.</p>
+        </div>
+
+        <div className="flex gap-4 justify-center text-xs text-fg-muted mt-4">
+          <Link href="/legal/privacy" className="hover:text-fg underline">Privacy Policy</Link>
+          <Link href="/legal/terms" className="hover:text-fg underline">Terms of Service</Link>
         </div>
       </div>
     </main>

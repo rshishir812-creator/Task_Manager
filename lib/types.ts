@@ -17,6 +17,7 @@ export interface Profile {
   family_id: string;
   is_super_admin: boolean;
   created_at: string;
+  privacy_consent_given_at: string | null;
 }
 
 export interface ChildInvitation {

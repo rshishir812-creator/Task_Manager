@@ -34,9 +34,9 @@ export async function GET(request: NextRequest) {
       // (the profile row was just created by the handle_new_user trigger).
       const { data: profile } = await createAdminClient()
         .from("profiles")
-        .select("id, role, family_id, is_super_admin")
+        .select("id, role, family_id, is_super_admin, privacy_consent_given_at")
         .eq("id", user.id)
-        .single() as { data: Pick<Profile, "id" | "role" | "family_id" | "is_super_admin"> | null; error: unknown };
+        .single() as { data: Pick<Profile, "id" | "role" | "family_id" | "is_super_admin" | "privacy_consent_given_at"> | null; error: unknown };
 
       if (!profile) {
         return NextResponse.redirect(`${origin}/login`);
@@ -45,6 +45,11 @@ export async function GET(request: NextRequest) {
       // Children always go to their dashboard
       if (profile.role === "child") {
         return NextResponse.redirect(`${origin}/dashboard`);
+      }
+
+      // Parents must accept the privacy policy before doing anything else
+      if (!profile.privacy_consent_given_at) {
+        return NextResponse.redirect(`${origin}/admin/privacy-consent`);
       }
 
       // Parent (and super-admin parent) routing priority:
