@@ -155,6 +155,7 @@ export default function PrivacyPolicy() {
         <div className="mt-12 pt-6 border-t border-[var(--border)] flex gap-4 text-xs text-fg-muted">
           <Link href="/legal/terms" className="hover:text-fg">Terms of Service</Link>
           <Link href="/legal/privacy" className="hover:text-fg">Privacy Policy</Link>
+          <Link href="/legal/notices" className="hover:text-fg">Open Source Notices</Link>
         </div>
       </div>
     </main>
