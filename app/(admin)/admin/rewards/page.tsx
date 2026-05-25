@@ -1,12 +1,26 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getFamilyPlan } from "@/lib/subscription";
+import PremiumLocked from "@/components/billing/PremiumLocked";
 import RewardManager from "@/components/admin/RewardManager";
 import type { Reward, RewardAssignment } from "@/lib/types";
 
 export default async function AdminRewardsPage() {
   const ctx = await getParentContext();
   if (!ctx) redirect("/login");
+
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
+    return (
+      <PremiumLocked
+        feature="Rewards"
+        icon="🎁"
+        description="Create rewards your kids can save up their points for and redeem."
+        plan={plan}
+      />
+    );
+  }
 
   const admin = createAdminClient();
   const [{ data: rewardsData }, kids] = await Promise.all([

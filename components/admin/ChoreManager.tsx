@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Chore, DayOfWeek, Profile, ChoreAssignment } from "@/lib/types";
+import type { Plan } from "@/lib/subscription";
+import { FREE_LIMITS } from "@/lib/plan-limits";
+import UpgradeModal from "@/components/billing/UpgradeModal";
 import ChoreForm from "./ChoreForm";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -14,9 +17,11 @@ interface ChoreManagerProps {
   initialChores: Chore[];
   kids: Profile[];
   initialAssignments: ChoreAssignment[];
+  plan: Plan;
+  isSuperAdmin: boolean;
 }
 
-export default function ChoreManager({ initialChores, kids, initialAssignments }: ChoreManagerProps) {
+export default function ChoreManager({ initialChores, kids, initialAssignments, plan, isSuperAdmin }: ChoreManagerProps) {
   const router = useRouter();
   const [chores, setChores] = useState(initialChores);
   const [assignments, setAssignments] = useState(initialAssignments);
@@ -24,6 +29,12 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
   const [editing, setEditing] = useState<Chore | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+
+  // Free-tier chore cap (super admins are never gated).
+  const premium = plan.hasPremiumAccess || isSuperAdmin;
+  const activeChoreCount = chores.filter((c) => c.is_active).length;
+  const choreLimitReached = !premium && activeChoreCount >= FREE_LIMITS.maxActiveChores;
 
   // Build a quick chore_id -> assigned user_ids map
   const assignmentsByChore = new Map<string, string[]>();
@@ -44,7 +55,11 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) { showToast("❌ Failed to create chore"); return; }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        showToast(data.error ?? "❌ Failed to create chore");
+        return;
+      }
       const { chore } = await res.json() as { chore: Chore };
       setChores((prev) => [...prev, chore]);
       const now = new Date().toISOString();
@@ -161,14 +176,28 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
         </div>
       )}
 
-      {/* Add button */}
+      {/* Add button (or Free-tier limit nudge) */}
       {!showForm && !editing && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-bg hover:border-accent-amber hover:bg-accent-amber/5 p-4 text-sm text-fg-muted hover:text-accent-amber transition-all flex items-center justify-center gap-2"
-        >
-          <span className="text-xl">+</span> Add New Chore
-        </button>
+        choreLimitReached ? (
+          <div className="rounded-2xl border border-accent-amber/40 bg-accent-amber/5 p-4 flex flex-col gap-2 items-start">
+            <p className="text-sm text-fg">
+              🔒 You&apos;ve reached the Free plan&apos;s {FREE_LIMITS.maxActiveChores}-chore limit. Upgrade for unlimited chores.
+            </p>
+            <button
+              onClick={() => setUpgradeOpen(true)}
+              className="rounded-xl bg-accent-amber text-black font-semibold text-sm px-4 py-2"
+            >
+              Upgrade for unlimited
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowForm(true)}
+            className="rounded-2xl border-2 border-dashed border-[var(--border)] bg-bg hover:border-accent-amber hover:bg-accent-amber/5 p-4 text-sm text-fg-muted hover:text-accent-amber transition-all flex items-center justify-center gap-2"
+          >
+            <span className="text-xl">+</span> Add New Chore
+          </button>
+        )
       )}
 
       {/* Create form */}
@@ -340,6 +369,8 @@ export default function ChoreManager({ initialChores, kids, initialAssignments }
           </div>
         ))}
       </div>
+
+      {upgradeOpen && <UpgradeModal plan={plan} onClose={() => setUpgradeOpen(false)} />}
     </div>
   );
 }

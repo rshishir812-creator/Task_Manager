@@ -1,6 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSuperAdminContext } from "@/lib/auth-scope";
+import { computePlan } from "@/lib/subscription";
+import SuperFamilyPlan from "@/components/admin/SuperFamilyPlan";
 import Link from "next/link";
 import type { Family, Profile } from "@/lib/types";
 
@@ -35,6 +37,8 @@ export default async function SuperFamilyPage({ params }: { params: { familyId: 
           Created {new Date(family.created_at).toLocaleDateString("en-IN")}
         </p>
       </div>
+
+      <SuperFamilyPlan familyId={family.id} plan={computePlan(family)} />
 
       <section>
         <h2 className="text-xs uppercase tracking-wide text-fg-muted mb-2">Parents</h2>

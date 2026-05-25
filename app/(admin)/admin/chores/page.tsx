@@ -2,12 +2,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import ChoreManager from "@/components/admin/ChoreManager";
 import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getFamilyPlan } from "@/lib/subscription";
 import type { Chore, ChoreAssignment } from "@/lib/types";
 
 export default async function AdminChoresPage() {
   const ctx = await getParentContext();
   if (!ctx) redirect("/login");
 
+  const plan = await getFamilyPlan(ctx.familyId);
   const adminClient = createAdminClient();
 
   const [{ data: choresData }, kids] = await Promise.all([
@@ -33,7 +35,7 @@ export default async function AdminChoresPage() {
         <h1 className="font-display font-bold text-2xl text-fg">Chore Management ⚔️</h1>
         <p className="text-sm text-fg-muted mt-1">{chores.length} chores · drag to reorder</p>
       </div>
-      <ChoreManager initialChores={chores} kids={kids} initialAssignments={assignments} />
+      <ChoreManager initialChores={chores} kids={kids} initialAssignments={assignments} plan={plan} isSuperAdmin={ctx.isSuperAdmin} />
     </div>
   );
 }

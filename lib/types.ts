@@ -1,10 +1,16 @@
 export type Role = "parent" | "child";
 export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
+export type SubscriptionTier = "free" | "premium";
+
 export interface Family {
   id: string;
   name: string;
   created_at: string;
+  subscription_tier: SubscriptionTier;
+  trial_started_at: string | null;
+  trial_ends_at: string | null;
+  premium_since: string | null;
 }
 
 export interface Profile {
@@ -177,7 +183,7 @@ export interface Feedback {
 export type Database = {
   public: {
     Tables: {
-      families: { Row: Family; Insert: Omit<Family, "id" | "created_at"> & { id?: string }; Update: Partial<Family> };
+      families: { Row: Family; Insert: Omit<Family, "id" | "created_at" | "subscription_tier" | "trial_started_at" | "trial_ends_at" | "premium_since"> & { id?: string; subscription_tier?: SubscriptionTier; trial_started_at?: string | null; trial_ends_at?: string | null; premium_since?: string | null }; Update: Partial<Family> };
       child_invitations: { Row: ChildInvitation; Insert: Omit<ChildInvitation, "id" | "created_at"> & { id?: string }; Update: Partial<ChildInvitation> };
       profiles: { Row: Profile; Insert: Omit<Profile, "created_at">; Update: Partial<Profile> };
       chores: { Row: Chore; Insert: Omit<Chore, "id" | "created_at">; Update: Partial<Chore> };

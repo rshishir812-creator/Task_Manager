@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getFamilyPlan } from "@/lib/subscription";
 import { getPointsBalance } from "@/lib/rewards";
 import RewardsCatalog from "@/components/chores/RewardsCatalog";
 import type { Profile, Reward, Redemption } from "@/lib/types";
@@ -19,6 +20,10 @@ export default async function ChildRewardsPage() {
   const profile = profileData as Pick<Profile, "family_id"> | null;
   if (!profile) redirect("/login");
 
+  // Rewards are a Premium feature. On a Free family the catalog is simply empty
+  // (the existing "no rewards yet" state) — no upgrade/payment wording reaches kids.
+  const plan = await getFamilyPlan(profile.family_id);
+
   // 1. All currently-assigned (active, not removed) rewards for this user
   const { data: assignmentRows } = await admin
     .from("reward_assignments")
@@ -29,7 +34,7 @@ export default async function ChildRewardsPage() {
     .map((a) => a.reward_id);
 
   let rewards: Reward[] = [];
-  if (assignedIds.length > 0) {
+  if (plan.hasPremiumAccess && assignedIds.length > 0) {
     const { data: rewardData } = await admin
       .from("rewards")
       .select("*")

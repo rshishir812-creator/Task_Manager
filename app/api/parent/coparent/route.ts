@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext } from "@/lib/auth-scope";
+import { getFamilyPlan, upgradeRequiredResponse } from "@/lib/subscription";
 
 /**
  * POST /api/parent/coparent  { email }
@@ -12,6 +13,12 @@ export async function POST(request: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (ctx.profile.role !== "parent") {
     return NextResponse.json({ error: "Only parents can invite a co-parent" }, { status: 403 });
+  }
+
+  // Co-parents are a Premium feature.
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess) {
+    return upgradeRequiredResponse("Adding a co-parent is a Premium feature. Upgrade to invite another adult.");
   }
 
   const { email } = await request.json() as { email: string };

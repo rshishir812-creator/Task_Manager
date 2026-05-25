@@ -11,6 +11,8 @@ import ThemeToggle from "@/components/ui/ThemeToggle";
 import HelpButton from "@/components/walkthrough/HelpButton";
 import WalkthroughManager from "@/components/walkthrough/WalkthroughManager";
 import LogoMark from "@/components/marketing/LogoMark";
+import TrialBanner from "@/components/billing/TrialBanner";
+import { getFamilyPlan } from "@/lib/subscription";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -69,6 +71,10 @@ export default async function AdminLayout({
     newFeedbackCount = count ?? 0;
   }
 
+  // Subscription plan — drives nav locks + the upgrade nudge. Super admins are
+  // never gated. Children never reach this layout, so no payment UI leaks to them.
+  const plan = await getFamilyPlan(profile.family_id);
+
   return (
     <NavProgressProvider color="amber">
     <div className="min-h-screen bg-bg flex flex-col">
@@ -106,6 +112,7 @@ export default async function AdminLayout({
           newFeedbackCount={newFeedbackCount}
           userEmail={profile.email}
           userName={profile.name}
+          hasPremiumAccess={plan.hasPremiumAccess}
         />
         <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
           {children}
@@ -114,6 +121,7 @@ export default async function AdminLayout({
       <SessionWatcher />
       <AdminReminderWatcher adminId={user.id} />
       <EnableNotificationsPrompt userId={user.id} mode="admin" />
+      {!profile.is_super_admin && <TrialBanner plan={plan} />}
       <WalkthroughManager role="parent" seenAt={profile.walkthrough_seen_at} />
     </div>
     </NavProgressProvider>

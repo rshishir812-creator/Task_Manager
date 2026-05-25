@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext } from "@/lib/auth-scope";
+import { getFamilyPlan, FREE_LIMITS, upgradeRequiredResponse } from "@/lib/subscription";
 import type { ChildInvitation, Profile } from "@/lib/types";
 
 /**
@@ -44,6 +45,30 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  // Free-tier limit: max children (existing + pending child invitations).
+  // Premium / active trial = unlimited.
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess) {
+    const [{ count: childCount }, { count: pendingCount }] = await Promise.all([
+      admin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("family_id", ctx.familyId)
+        .eq("role", "child"),
+      admin
+        .from("child_invitations")
+        .select("id", { count: "exact", head: true })
+        .eq("family_id", ctx.familyId)
+        .is("accepted_at", null)
+        .neq("role", "parent"),
+    ]);
+    if ((childCount ?? 0) + (pendingCount ?? 0) >= FREE_LIMITS.maxChildren) {
+      return upgradeRequiredResponse(
+        `The Free plan supports ${FREE_LIMITS.maxChildren} child. Upgrade to add more of your family.`,
+      );
+    }
+  }
 
   // Already a member?
   const { data: existingProfile } = await admin

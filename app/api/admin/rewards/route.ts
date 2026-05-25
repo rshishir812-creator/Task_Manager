@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getFamilyPlan, upgradeRequiredResponse } from "@/lib/subscription";
 import type { Reward } from "@/lib/types";
 
 interface CreateRewardBody {
@@ -16,6 +17,12 @@ export async function POST(request: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (ctx.profile.role !== "parent" && !ctx.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Rewards are a Premium feature.
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess) {
+    return upgradeRequiredResponse("Rewards are a Premium feature. Upgrade to create rewards your kids can redeem.");
   }
 
   const body = await request.json() as CreateRewardBody;

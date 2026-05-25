@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTodayIST } from "@/lib/streak-calculator";
 import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getFamilyPlan } from "@/lib/subscription";
+import PremiumLocked from "@/components/billing/PremiumLocked";
 import {
   computeFamilyScore,
   computeChampionOfWeek,
@@ -24,6 +26,18 @@ import type {
 export default async function InsightsPage() {
   const ctx = await getParentContext();
   if (!ctx) redirect("/login");
+
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
+    return (
+      <PremiumLocked
+        feature="Insights"
+        icon="📈"
+        description="See your family's completion trends, weekly champion, and which chores need attention."
+        plan={plan}
+      />
+    );
+  }
 
   const adminClient = createAdminClient();
   const kids = await getChildrenOfFamily(ctx.familyId);

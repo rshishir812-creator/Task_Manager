@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext } from "@/lib/auth-scope";
+import { getFamilyPlan } from "@/lib/subscription";
 import FamilyPanel from "@/components/admin/FamilyPanel";
 import FamilyNameEditor from "@/components/admin/FamilyNameEditor";
 import type { Profile, ChildInvitation, Family } from "@/lib/types";
@@ -10,6 +11,7 @@ export default async function FamilyPage() {
   const ctx = await getParentContext();
   if (!ctx) redirect("/login");
 
+  const plan = await getFamilyPlan(ctx.familyId);
   const admin = createAdminClient();
   const [familyRes, parentsRes, childrenRes, invitationsRes] = await Promise.all([
     admin.from("families").select("*").eq("id", ctx.familyId).single(),
@@ -94,6 +96,8 @@ export default async function FamilyPage() {
       <FamilyPanel
         initialChildren={children}
         initialInvitations={invitations}
+        plan={plan}
+        isSuperAdmin={ctx.isSuperAdmin}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getFamilyPlan } from "@/lib/subscription";
 import { getPointsBalance } from "@/lib/rewards";
 import type { Profile, Reward, RewardAssignment } from "@/lib/types";
 
@@ -28,6 +29,13 @@ export async function POST(request: NextRequest) {
     .single();
   const profile = profileData as Pick<Profile, "id" | "family_id" | "role"> | null;
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  // Redemptions require the family to be on Premium (or trialing). Children hit
+  // this route, so the message stays neutral — no upgrade/payment wording.
+  const plan = await getFamilyPlan(profile.family_id);
+  if (!plan.hasPremiumAccess) {
+    return NextResponse.json({ error: "This reward isn't available right now." }, { status: 400 });
+  }
 
   // Fetch reward + check it's in the user's family, active, and assigned to them
   const { data: rewardData } = await admin

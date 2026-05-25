@@ -1,18 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getFamilyPlan, FREE_LIMITS, upgradeRequiredResponse } from "@/lib/subscription";
 import type { Chore } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   const ctx = await getParentContext();
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const adminClient = createAdminClient();
+
+  // Free-tier limit: max active chores. Premium / active trial = unlimited.
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess) {
+    const { count } = await adminClient
+      .from("chores")
+      .select("id", { count: "exact", head: true })
+      .eq("family_id", ctx.familyId)
+      .eq("is_active", true);
+    if ((count ?? 0) >= FREE_LIMITS.maxActiveChores) {
+      return upgradeRequiredResponse(
+        `The Free plan is limited to ${FREE_LIMITS.maxActiveChores} active chores. Upgrade to add more.`,
+      );
+    }
+  }
+
   const body = await request.json() as Omit<Chore, "id" | "created_at" | "family_id"> & {
     assignedTo?: string[];
   };
   const { assignedTo, ...choreFields } = body;
-
-  const adminClient = createAdminClient();
 
   const { data, error } = await adminClient
     .from("chores")

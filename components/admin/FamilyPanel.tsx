@@ -4,13 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { Profile, ChildInvitation } from "@/lib/types";
+import type { Plan } from "@/lib/subscription";
+import { FREE_LIMITS } from "@/lib/plan-limits";
+import UpgradeModal from "@/components/billing/UpgradeModal";
 
 interface FamilyPanelProps {
   initialChildren: Profile[];
   initialInvitations: ChildInvitation[];
+  plan: Plan;
+  isSuperAdmin: boolean;
 }
 
-export default function FamilyPanel({ initialChildren, initialInvitations }: FamilyPanelProps) {
+export default function FamilyPanel({ initialChildren, initialInvitations, plan, isSuperAdmin }: FamilyPanelProps) {
   const router = useRouter();
   const [children, setChildren] = useState(initialChildren);
   const [invitations, setInvitations] = useState(initialInvitations);
@@ -24,9 +29,16 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
   const [submittingCoparent, setSubmittingCoparent] = useState(false);
   const [pendingChild, setPendingChild] = useState<{ name: string; email: string } | null>(null);
   const [pendingCoparent, setPendingCoparent] = useState<string | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const childInvitations = invitations.filter((i) => i.role !== "parent");
   const parentInvitations = invitations.filter((i) => i.role === "parent");
+
+  // Premium gating (super admins are never gated).
+  const premium = plan.hasPremiumAccess || isSuperAdmin;
+  const childCount = children.length + childInvitations.length;
+  const childLimitReached = !premium && childCount >= FREE_LIMITS.maxChildren;
+  const coparentLocked = !premium;
 
   function showToast(msg: string) {
     setToast(msg);
@@ -276,7 +288,21 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
             </div>
           </div>
 
-          {pendingChild ? (
+          {childLimitReached ? (
+            <div className="p-5 flex flex-col gap-3 items-start">
+              <p className="text-sm text-fg leading-relaxed">
+                <span className="font-semibold">🔒 Premium</span> — the Free plan includes {FREE_LIMITS.maxChildren} child.
+                Upgrade to add more of your family.
+              </p>
+              <button
+                type="button"
+                onClick={() => setUpgradeOpen(true)}
+                className="rounded-xl bg-accent-amber text-black font-semibold text-sm px-4 py-2"
+              >
+                Upgrade to add more
+              </button>
+            </div>
+          ) : pendingChild ? (
             <div className="p-5 flex flex-col gap-3">
               <p className="text-sm text-fg leading-relaxed">
                 Invite <span className="font-semibold text-accent-teal">{pendingChild.email}</span> as a <span className="font-semibold">child</span> in your family?
@@ -357,7 +383,20 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
             </div>
           </div>
 
-          {pendingCoparent ? (
+          {coparentLocked ? (
+            <div className="p-5 flex flex-col gap-3 items-start">
+              <p className="text-sm text-fg leading-relaxed">
+                <span className="font-semibold">🔒 Premium</span> — adding a co-parent or guardian is a Premium feature.
+              </p>
+              <button
+                type="button"
+                onClick={() => setUpgradeOpen(true)}
+                className="rounded-xl bg-accent-amber text-black font-semibold text-sm px-4 py-2"
+              >
+                Upgrade to add a co-parent
+              </button>
+            </div>
+          ) : pendingCoparent ? (
             <div className="p-5 flex flex-col gap-3">
               <p className="text-sm text-fg leading-relaxed">
                 Invite <span className="font-semibold text-accent-amber">{pendingCoparent}</span> as a <span className="font-semibold">co-parent</span> (adult)?
@@ -411,6 +450,8 @@ export default function FamilyPanel({ initialChildren, initialInvitations }: Fam
           )}
         </div>
       </section>
+
+      {upgradeOpen && <UpgradeModal plan={plan} onClose={() => setUpgradeOpen(false)} />}
     </>
   );
 }

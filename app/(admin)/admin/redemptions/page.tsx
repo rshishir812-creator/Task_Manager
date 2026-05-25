@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext } from "@/lib/auth-scope";
+import { getFamilyPlan } from "@/lib/subscription";
+import PremiumLocked from "@/components/billing/PremiumLocked";
 import RedemptionsPanel from "@/components/admin/RedemptionsPanel";
 import { getPointsBalance } from "@/lib/rewards";
 import type { Profile, Redemption } from "@/lib/types";
@@ -8,6 +10,18 @@ import type { Profile, Redemption } from "@/lib/types";
 export default async function AdminRedemptionsPage() {
   const ctx = await getParentContext();
   if (!ctx) redirect("/login");
+
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
+    return (
+      <PremiumLocked
+        feature="Redemptions"
+        icon="📬"
+        description="Review and approve what your kids want to spend their hard-earned points on."
+        plan={plan}
+      />
+    );
+  }
 
   const admin = createAdminClient();
   const [{ data: redemptionsData }, { data: kidsData }] = await Promise.all([

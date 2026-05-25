@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext, isChildOfFamily } from "@/lib/auth-scope";
+import { getFamilyPlan, upgradeRequiredResponse } from "@/lib/subscription";
 import { getPointsBalance } from "@/lib/rewards";
 import type { Redemption } from "@/lib/types";
 
@@ -20,6 +21,12 @@ export async function POST(
 ) {
   const ctx = await getParentContext();
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Redemptions are a Premium feature.
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess) {
+    return upgradeRequiredResponse("Redemptions are a Premium feature. Upgrade to review your kids' requests.");
+  }
 
   const { action, note } = await request.json() as { action: "approve" | "deny"; note?: string };
   if (action !== "approve" && action !== "deny") {

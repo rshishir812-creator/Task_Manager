@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getFamilyPlan, upgradeRequiredResponse } from "@/lib/subscription";
 import type { Reward } from "@/lib/types";
 
 interface PatchRewardBody {
@@ -18,6 +19,11 @@ export async function PATCH(
 ) {
   const ctx = await getParentContext();
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess) {
+    return upgradeRequiredResponse("Rewards are a Premium feature. Upgrade to manage rewards.");
+  }
 
   const admin = createAdminClient();
   const { data: existing } = await admin
@@ -105,6 +111,11 @@ export async function DELETE(
 ) {
   const ctx = await getParentContext();
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const plan = await getFamilyPlan(ctx.familyId);
+  if (!plan.hasPremiumAccess) {
+    return upgradeRequiredResponse("Rewards are a Premium feature. Upgrade to manage rewards.");
+  }
 
   const admin = createAdminClient();
   const { data: existing } = await admin
