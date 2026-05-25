@@ -24,7 +24,7 @@ export async function POST(
 
   // Redemptions are a Premium feature.
   const plan = await getFamilyPlan(ctx.familyId);
-  if (!plan.hasPremiumAccess) {
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
     return upgradeRequiredResponse("Redemptions are a Premium feature. Upgrade to review your kids' requests.");
   }
 

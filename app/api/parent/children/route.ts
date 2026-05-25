@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   // Free-tier limit: max children (existing + pending child invitations).
   // Premium / active trial = unlimited.
   const plan = await getFamilyPlan(ctx.familyId);
-  if (!plan.hasPremiumAccess) {
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
     const [{ count: childCount }, { count: pendingCount }] = await Promise.all([
       admin
         .from("profiles")

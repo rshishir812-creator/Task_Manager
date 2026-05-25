@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   // Rewards are a Premium feature.
   const plan = await getFamilyPlan(ctx.familyId);
-  if (!plan.hasPremiumAccess) {
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
     return upgradeRequiredResponse("Rewards are a Premium feature. Upgrade to create rewards your kids can redeem.");
   }
 

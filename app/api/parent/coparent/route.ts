@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   // Co-parents are a Premium feature.
   const plan = await getFamilyPlan(ctx.familyId);
-  if (!plan.hasPremiumAccess) {
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
     return upgradeRequiredResponse("Adding a co-parent is a Premium feature. Upgrade to invite another adult.");
   }
 

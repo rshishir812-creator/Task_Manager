@@ -21,7 +21,7 @@ export async function PATCH(
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const plan = await getFamilyPlan(ctx.familyId);
-  if (!plan.hasPremiumAccess) {
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
     return upgradeRequiredResponse("Rewards are a Premium feature. Upgrade to manage rewards.");
   }
 
@@ -113,7 +113,7 @@ export async function DELETE(
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const plan = await getFamilyPlan(ctx.familyId);
-  if (!plan.hasPremiumAccess) {
+  if (!plan.hasPremiumAccess && !ctx.isSuperAdmin) {
     return upgradeRequiredResponse("Rewards are a Premium feature. Upgrade to manage rewards.");
   }
 
