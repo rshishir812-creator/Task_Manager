@@ -6,6 +6,7 @@ import { NavProgressProvider } from "@/components/ui/NavProgress";
 import SessionWatcher from "@/components/auth/SessionWatcher";
 import AdminReminderWatcher from "@/components/notifications/AdminReminderWatcher";
 import EnableNotificationsPrompt from "@/components/notifications/EnableNotificationsPrompt";
+import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
 import SignOutButton from "@/components/ui/SignOutButton";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import HelpButton from "@/components/walkthrough/HelpButton";
@@ -121,6 +122,7 @@ export default async function AdminLayout({
       <SessionWatcher />
       <AdminReminderWatcher adminId={user.id} />
       <EnableNotificationsPrompt userId={user.id} mode="admin" />
+      <InstallAppPrompt accent="amber" />
       {!profile.is_super_admin && <TrialBanner plan={plan} />}
       <WalkthroughManager role="parent" seenAt={profile.walkthrough_seen_at} />
     </div>

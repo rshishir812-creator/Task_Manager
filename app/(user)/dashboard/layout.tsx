@@ -11,6 +11,7 @@ import { NavProgressProvider } from "@/components/ui/NavProgress";
 import SessionWatcher from "@/components/auth/SessionWatcher";
 import ReminderManager from "@/components/notifications/ReminderManager";
 import EnableNotificationsPrompt from "@/components/notifications/EnableNotificationsPrompt";
+import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
 import Image from "next/image";
 import type { Profile } from "@/lib/types";
 
@@ -61,6 +62,7 @@ export default async function DashboardLayout({
       <SessionWatcher />
       <ReminderManager userId={user.id} />
       <EnableNotificationsPrompt userId={user.id} />
+      <InstallAppPrompt accent="teal" />
       <WalkthroughManager role="child" seenAt={profile?.walkthrough_seen_at ?? null} />
     </div>
     </NavProgressProvider>
