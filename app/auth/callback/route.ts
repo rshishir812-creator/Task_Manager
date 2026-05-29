@@ -6,6 +6,7 @@ import type { Profile } from "@/lib/types";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const intent = searchParams.get("intent"); // "parent" | "child" | null
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description") ?? "";
 
@@ -45,6 +46,42 @@ export async function GET(request: NextRequest) {
       // Children always go to their dashboard
       if (profile.role === "child") {
         return NextResponse.redirect(`${origin}/dashboard`);
+      }
+
+      // Safeguard: someone tapped "I'm a Kid" but came out a parent. The
+      // handle_new_user trigger auto-creates a parent + family for any
+      // non-invited Google sign-in, so an un-invited kid would otherwise be
+      // stranded as a stray parent (and could never be invited later, because
+      // the trigger only fires for brand-new users). If — and only if — this
+      // is a brand-new empty parent family with no invitation on record, undo
+      // it cleanly and ask them to get invited first.
+      if (intent === "child" && profile.role === "parent") {
+        const admin = createAdminClient();
+        const [{ count: choreCount }, { count: memberCount }, { count: inviteCount }] =
+          await Promise.all([
+            admin.from("chores").select("id", { count: "exact", head: true }).eq("family_id", profile.family_id),
+            admin.from("profiles").select("id", { count: "exact", head: true }).eq("family_id", profile.family_id),
+            admin.from("child_invitations").select("id", { count: "exact", head: true }).ilike("email", user.email ?? ""),
+          ]);
+
+        const isBrandNewEmptyFamily =
+          (choreCount ?? 0) === 0 && (memberCount ?? 1) === 1 && (inviteCount ?? 0) === 0;
+
+        if (isBrandNewEmptyFamily) {
+          // Order matters: the profile→auth.users FK has no cascade, and the
+          // profile→family FK blocks deleting the family while the profile exists.
+          await admin.from("profiles").delete().eq("id", user.id);
+          await admin.from("families").delete().eq("id", profile.family_id);
+          await admin.auth.admin.deleteUser(user.id);
+          await supabase.auth.signOut();
+          return NextResponse.redirect(
+            `${origin}/login?error=${encodeURIComponent(
+              "No invitation yet — ask a parent to add your email, then sign in again."
+            )}`
+          );
+        }
+        // Otherwise it's an established parent who tapped the wrong button —
+        // fall through and route them normally.
       }
 
       // Parents must accept the privacy policy before doing anything else

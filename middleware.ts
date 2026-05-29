@@ -69,6 +69,14 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Profile/account page: any authenticated user (parent or child)
+  if (pathname.startsWith("/profile")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return response;
+  }
+
   // Root: redirect based on auth state
   if (pathname === "/") {
     if (!user) {

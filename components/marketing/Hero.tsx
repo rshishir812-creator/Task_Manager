@@ -8,27 +8,33 @@ interface HeroProps {
   errorMsg: string | null;
 }
 
-export default function Hero({ errorMsg }: HeroProps) {
-  const [isLoading, setIsLoading] = useState(false);
+type Intent = "parent" | "child";
 
-  async function handleGoogleSignIn() {
-    if (isLoading) return;
-    setIsLoading(true);
+export default function Hero({ errorMsg }: HeroProps) {
+  const [loading, setLoading] = useState<Intent | null>(null);
+
+  async function handleGoogleSignIn(intent: Intent) {
+    if (loading) return;
+    setLoading(intent);
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?intent=${intent}`,
+          // Always show Google's account chooser so the right person can pick
+          // their own account on a shared device (otherwise Google silently
+          // reuses whoever is already signed in).
+          queryParams: { prompt: "select_account" },
         },
       });
       if (error) {
-        setIsLoading(false);
+        setLoading(null);
       }
       // On success, the browser is navigating to Google — keep the loading
       // state until the redirect tears the page down.
     } catch {
-      setIsLoading(false);
+      setLoading(null);
     }
   }
 
@@ -50,30 +56,49 @@ export default function Hero({ errorMsg }: HeroProps) {
         ChoreQuest turns daily habits into a game your kids actually want to play.
       </p>
 
-      <div className="mt-7">
+      <div className="mt-7 flex flex-col gap-3">
         <button
-          onClick={handleGoogleSignIn}
-          disabled={isLoading}
-          aria-busy={isLoading}
+          onClick={() => handleGoogleSignIn("parent")}
+          disabled={loading !== null}
+          aria-busy={loading === "parent"}
           className="w-full flex items-center justify-center gap-3 rounded-full bg-accent-teal text-black font-hero font-extrabold text-base md:text-lg px-8 py-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.99] disabled:cursor-wait disabled:hover:scale-100 disabled:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent-teal focus:ring-offset-2 focus:ring-offset-bg"
         >
-          {isLoading ? (
+          {loading === "parent" ? (
             <>
               <Loader2 size={20} className="animate-spin" aria-hidden="true" />
               <span>Connecting…</span>
             </>
           ) : (
             <>
-              <span>Continue with Google</span>
+              <span>I&apos;m a Parent</span>
               <span aria-hidden="true">→</span>
             </>
           )}
         </button>
 
-        <p className="mt-4 text-center text-xs text-fg-muted/70 leading-relaxed">
-          <span className="text-fg-muted">First time?</span> You&apos;ll start your own family.
+        <button
+          onClick={() => handleGoogleSignIn("child")}
+          disabled={loading !== null}
+          aria-busy={loading === "child"}
+          className="w-full flex items-center justify-center gap-3 rounded-full border-2 border-accent-teal text-fg font-hero font-extrabold text-base md:text-lg px-8 py-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.99] disabled:cursor-wait disabled:hover:scale-100 disabled:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent-teal focus:ring-offset-2 focus:ring-offset-bg"
+        >
+          {loading === "child" ? (
+            <>
+              <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+              <span>Connecting…</span>
+            </>
+          ) : (
+            <>
+              <span>I&apos;m a Kid</span>
+              <span aria-hidden="true">→</span>
+            </>
+          )}
+        </button>
+
+        <p className="mt-1 text-center text-xs text-fg-muted/70 leading-relaxed">
+          <span className="text-fg-muted">Parents:</span> first time? You&apos;ll start your own family.
           <br />
-          <span className="text-fg-muted">Joining someone else&apos;s?</span> Ask them to invite your email first.
+          <span className="text-fg-muted">Kids:</span> ask a parent to invite your email first.
         </p>
       </div>
     </div>

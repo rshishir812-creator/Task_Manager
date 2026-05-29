@@ -15,6 +15,7 @@ import LogoMark from "@/components/marketing/LogoMark";
 import TrialBanner from "@/components/billing/TrialBanner";
 import { getFamilyPlan } from "@/lib/subscription";
 import Image from "next/image";
+import Link from "next/link";
 import type { Profile } from "@/lib/types";
 
 export default async function AdminLayout({
@@ -88,18 +89,24 @@ export default async function AdminLayout({
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <HelpButton />
-          {profile?.avatar_url && (
-            <Image
-              src={profile.avatar_url}
-              alt={profile.name ?? "Avatar"}
-              width={32}
-              height={32}
-              className="rounded-full"
-            />
-          )}
-          <span className="text-xs text-accent-amber font-semibold hidden sm:block">
-            {profile?.name?.split(" ")[0]}
-          </span>
+          <Link href="/profile" aria-label="Profile & account" className="flex items-center gap-2 shrink-0">
+            {profile?.avatar_url ? (
+              <Image
+                src={profile.avatar_url}
+                alt={profile.name ?? "Avatar"}
+                width={32}
+                height={32}
+                className="rounded-full"
+              />
+            ) : (
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-accent-amber/20 text-accent-amber text-sm font-bold">
+                {(profile?.name ?? "?").charAt(0).toUpperCase()}
+              </span>
+            )}
+            <span className="text-xs text-accent-amber font-semibold hidden sm:block">
+              {profile?.name?.split(" ")[0]}
+            </span>
+          </Link>
           <SignOutButton />
         </div>
       </header>

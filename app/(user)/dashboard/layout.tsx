@@ -13,6 +13,7 @@ import ReminderManager from "@/components/notifications/ReminderManager";
 import EnableNotificationsPrompt from "@/components/notifications/EnableNotificationsPrompt";
 import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
 import Image from "next/image";
+import Link from "next/link";
 import type { Profile } from "@/lib/types";
 
 export default async function DashboardLayout({
@@ -41,15 +42,21 @@ export default async function DashboardLayout({
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <HelpButton />
-          {profile?.avatar_url && (
-            <Image
-              src={profile.avatar_url}
-              alt={profile.name ?? "Avatar"}
-              width={32}
-              height={32}
-              className="rounded-full"
-            />
-          )}
+          <Link href="/profile" aria-label="Profile & account" className="shrink-0">
+            {profile?.avatar_url ? (
+              <Image
+                src={profile.avatar_url}
+                alt={profile.name ?? "Avatar"}
+                width={32}
+                height={32}
+                className="rounded-full"
+              />
+            ) : (
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-accent-teal/20 text-accent-teal text-sm font-bold">
+                {(profile?.name ?? "?").charAt(0).toUpperCase()}
+              </span>
+            )}
+          </Link>
           <SignOutButton />
         </div>
       </header>
