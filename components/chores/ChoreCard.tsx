@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import type { Chore, ChoreCompletion } from "@/lib/types";
+import { qualityLevel } from "@/lib/quality-rating";
 import StreakFlame from "@/components/gamification/StreakFlame";
 import ExceptionModal from "@/components/gamification/ExceptionModal";
 import ConfettiBlast from "@/components/gamification/ConfettiBlast";
@@ -327,9 +328,23 @@ export default function ChoreCard({
                   {chore.title}
                 </p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-xs font-semibold text-accent-amber">
-                    +{chore.points} pts
-                  </span>
+                  {(() => {
+                    const rating = qualityLevel(completion?.quality_rating ?? null);
+                    const showAdjusted = isDone && rating !== null;
+                    const earned = completion?.points_earned ?? chore.points;
+                    return showAdjusted ? (
+                      <span
+                        className="text-xs font-semibold text-accent-amber"
+                        title={`${rating.label} · ${earned} of ${chore.points} pts`}
+                      >
+                        {rating.emoji} +{earned} pts
+                      </span>
+                    ) : (
+                      <span className="text-xs font-semibold text-accent-amber">
+                        +{chore.points} pts
+                      </span>
+                    );
+                  })()}
                   {streak > 0 && <StreakFlame streak={streak} size="sm" />}
                   {/* Verification chips */}
                   {!isDone && !isPending && !isDenied && (

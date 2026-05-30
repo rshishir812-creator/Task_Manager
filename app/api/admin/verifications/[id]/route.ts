@@ -9,6 +9,7 @@ import {
   getDayOfWeek,
 } from "@/lib/streak-calculator";
 import { DAILY_BONUS_POINTS } from "@/lib/constants";
+import { isValidQualityRating, pointsForRating } from "@/lib/quality-rating";
 import type {
   Chore,
   ChoreAssignment,
@@ -31,9 +32,14 @@ export async function POST(
   const ctx = await getParentContext();
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { action, note } = await request.json() as { action: "approve" | "deny"; note?: string };
+  const body = await request.json() as { action: "approve" | "deny"; note?: string; rating?: number | null };
+  const { action, note } = body;
   if (action !== "approve" && action !== "deny") {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  }
+  const rating = body.rating ?? null;
+  if (rating !== null && !isValidQualityRating(rating)) {
+    return NextResponse.json({ error: "Invalid rating" }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -64,7 +70,10 @@ export async function POST(
   if (!chore) return NextResponse.json({ error: "Chore not found" }, { status: 404 });
   const familyId = chore.family_id;
 
-  // Update status
+  // Update status (+ quality-rated points on approve)
+  const approvePointsEarned = completion.is_exception
+    ? completion.points_earned
+    : pointsForRating(chore.points, rating);
   const { error: updErr } = await admin
     .from("chore_completions")
     .update({
@@ -72,6 +81,9 @@ export async function POST(
       verified_by: ctx.user.id,
       verified_at: new Date().toISOString(),
       denial_reason: action === "deny" ? (note?.trim() || null) : completion.denial_reason,
+      ...(action === "approve"
+        ? { quality_rating: rating, points_earned: approvePointsEarned }
+        : {}),
     })
     .eq("id", params.id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });

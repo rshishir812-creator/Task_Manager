@@ -83,6 +83,8 @@ export interface ChoreCompletion {
   self_report_start_at: string | null;
   self_report_end_at: string | null;
   notes: string | null;
+  // Phase 6 — optional parent quality rating (1–4, null = unrated/full points)
+  quality_rating: number | null;
 }
 
 export interface DailyBonus {
