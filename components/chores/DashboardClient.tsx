@@ -12,6 +12,7 @@ import ConfettiBlast from "@/components/gamification/ConfettiBlast";
 import LevelUpModal from "@/components/gamification/LevelUpModal";
 import BadgeCelebrationModal from "@/components/gamification/BadgeCelebrationModal";
 import MilestonesCard from "@/components/gamification/MilestonesCard";
+import { postJsonWithAuthRetry, AUTH_EXPIRED } from "@/lib/fetch-with-auth";
 
 interface DashboardClientProps {
   profile: Profile;
@@ -104,10 +105,10 @@ export default function DashboardClient({
       setCompletions((prev) => [...prev, tempCompletion]);
 
       try {
-        const res = await fetch("/api/complete-chore", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ choreId, completedDate: date, ...(payload ?? {}) }),
+        const res = await postJsonWithAuthRetry("/api/complete-chore", {
+          choreId,
+          completedDate: date,
+          ...(payload ?? {}),
         });
         if (!res.ok) throw new Error("Failed");
         const data = await res.json() as {
@@ -138,8 +139,13 @@ export default function DashboardClient({
           setLevelUp({ level: newLevelInfo.level, name: newLevelInfo.name });
         }
         if (data.allComplete) setPerfectDay({ date });
-      } catch {
+      } catch (err) {
         setCompletions((prev) => prev.filter((c) => c.id !== `temp-${choreId}-${date}`));
+        if (err instanceof Error && err.message === AUTH_EXPIRED) {
+          showToast("⏰ Session expired — signing you back in…");
+          window.setTimeout(() => window.location.assign("/login"), 1200);
+          return;
+        }
         showToast("❌ Failed to save. Please try again.");
       }
     },
@@ -155,16 +161,20 @@ export default function DashboardClient({
         prev.filter((c) => !(c.chore_id === choreId && c.completed_date === date))
       );
       try {
-        const res = await fetch("/api/uncomplete-chore", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ choreId, completedDate: date }),
+        const res = await postJsonWithAuthRetry("/api/uncomplete-chore", {
+          choreId,
+          completedDate: date,
         });
         if (!res.ok) throw new Error("Failed");
         if (removed?.points_earned) setTotalPoints((p) => p - (removed.points_earned ?? 0));
         startTransition(() => router.refresh());
-      } catch {
+      } catch (err) {
         if (removed) setCompletions((prev) => [...prev, removed]);
+        if (err instanceof Error && err.message === AUTH_EXPIRED) {
+          showToast("⏰ Session expired — signing you back in…");
+          window.setTimeout(() => window.location.assign("/login"), 1200);
+          return;
+        }
         showToast("❌ Failed to undo. Please try again.");
       }
     },
@@ -192,16 +202,22 @@ export default function DashboardClient({
       };
       setCompletions((prev) => [...prev, tempEx]);
       try {
-        const res = await fetch("/api/complete-chore", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ choreId, completedDate: date, isException: true, exceptionReason: reason }),
+        const res = await postJsonWithAuthRetry("/api/complete-chore", {
+          choreId,
+          completedDate: date,
+          isException: true,
+          exceptionReason: reason,
         });
         if (!res.ok) throw new Error("Failed");
         startTransition(() => router.refresh());
         showToast("⚡ Exception saved — streak preserved!");
-      } catch {
+      } catch (err) {
         setCompletions((prev) => prev.filter((c) => c.id !== `temp-ex-${choreId}-${date}`));
+        if (err instanceof Error && err.message === AUTH_EXPIRED) {
+          showToast("⏰ Session expired — signing you back in…");
+          window.setTimeout(() => window.location.assign("/login"), 1200);
+          return;
+        }
         showToast("❌ Failed to save exception.");
       }
     },
