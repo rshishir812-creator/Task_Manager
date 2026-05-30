@@ -5,7 +5,10 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "ChoreQuest",
     short_name: "ChoreQuest",
     description: "Make chores a quest. Not a fight.",
-    start_url: "/dashboard",
+    // Role-agnostic launch target: middleware redirects "/" to /admin/dashboard
+    // for parents/super-admins and /dashboard for children. Hardcoding
+    // "/dashboard" here sent parents to the child view on PWA cold launch.
+    start_url: "/",
     display: "standalone",
     background_color: "#0B0F2A",
     theme_color: "#0B0F2A",
