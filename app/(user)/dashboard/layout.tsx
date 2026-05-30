@@ -9,8 +9,6 @@ import BottomNav from "@/components/layout/BottomNav";
 import PageTransition from "@/components/ui/PageTransition";
 import { NavProgressProvider } from "@/components/ui/NavProgress";
 import SessionWatcher from "@/components/auth/SessionWatcher";
-import ReminderManager from "@/components/notifications/ReminderManager";
-import EnableNotificationsPrompt from "@/components/notifications/EnableNotificationsPrompt";
 import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
 import Image from "next/image";
 import Link from "next/link";
@@ -67,8 +65,6 @@ export default async function DashboardLayout({
 
       <BottomNav />
       <SessionWatcher />
-      <ReminderManager userId={user.id} />
-      <EnableNotificationsPrompt userId={user.id} />
       <InstallAppPrompt accent="teal" />
       <WalkthroughManager role="child" seenAt={profile?.walkthrough_seen_at ?? null} />
     </div>
