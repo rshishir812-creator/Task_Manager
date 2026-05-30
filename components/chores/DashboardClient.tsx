@@ -101,6 +101,7 @@ export default function DashboardClient({
         self_report_start_at: payload?.startAt ?? null,
         self_report_end_at: payload?.endAt ?? null,
         notes: payload?.notes ?? null,
+        quality_rating: null,
       };
       setCompletions((prev) => [...prev, tempCompletion]);
 
@@ -199,6 +200,7 @@ export default function DashboardClient({
         self_report_start_at: null,
         self_report_end_at: null,
         notes: null,
+        quality_rating: null,
       };
       setCompletions((prev) => [...prev, tempEx]);
       try {

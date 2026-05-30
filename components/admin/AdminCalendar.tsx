@@ -148,6 +148,7 @@ export default function AdminCalendar({ chores, completions, assignments, userId
             self_report_start_at: null,
             self_report_end_at: null,
             notes: null,
+            quality_rating: null,
           },
         ];
       });
