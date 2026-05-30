@@ -62,7 +62,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
             <span className="text-fg-muted/40 mx-2">·</span>
             🚫 No ads, no tracking
             <span className="text-fg-muted/40 mx-2">·</span>
-            🆓 Free for the whole family
+            🎮 Made with love for parents and kids
           </div>
           <div className="flex gap-5 text-[11px] text-fg-muted/70">
             <Link href="/legal/privacy" className="hover:text-fg transition-colors">

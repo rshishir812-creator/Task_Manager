@@ -10,6 +10,16 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "chorequest-rho.vercel.app" }],
+        destination: "https://chorequest.in/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 const withPWA = nextPwa({
