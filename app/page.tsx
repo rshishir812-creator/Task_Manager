@@ -1,7 +1,4 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { redirect } from "next/navigation";
 import MarketingHero from "@/components/marketing/MarketingHero";
 import HowItWorks from "@/components/marketing/HowItWorks";
 import Features from "@/components/marketing/Features";
@@ -29,22 +26,10 @@ const HOMEPAGE_FAQ_IDS = [
   "coppa-safe",
 ] as const;
 
-export default async function Home() {
-  // Signed-in users skip the marketing page — route by role to their dashboard.
-  // This preserves the existing PWA cold-launch behavior (parents → /admin,
-  // kids → /dashboard) so installed users see no change.
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { data: profile } = await createAdminClient()
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (profile?.role === "child") redirect("/dashboard");
-    redirect("/admin/dashboard");
-  }
-
+export default function Home() {
+  // Signed-in users are redirected to their dashboard by middleware before
+  // reaching this page (see middleware.ts root branch), so this only renders
+  // for signed-out visitors. Installed PWA users stay on their existing flow.
   const homepageFaq = FAQ_ITEMS.filter((item) =>
     (HOMEPAGE_FAQ_IDS as readonly string[]).includes(item.id),
   );

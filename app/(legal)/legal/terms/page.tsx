@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — ChoreQuest",
+  title: "Terms of Service",
+  description: "The ChoreQuest Terms of Service. Governed by Indian law.",
+  alternates: { canonical: "/legal/terms" },
+  robots: { index: true, follow: true },
 };
 
 export default function TermsOfService() {

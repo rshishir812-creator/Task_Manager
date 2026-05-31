@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Open Source Notices — ChoreQuest",
+  title: "Open Source Notices",
+  description: "Open-source software ChoreQuest uses and the licenses we're grateful for.",
+  alternates: { canonical: "/legal/notices" },
+  robots: { index: true, follow: true },
 };
 
 export default function OpenSourceNotices() {

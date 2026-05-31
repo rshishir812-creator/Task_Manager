@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
@@ -5,10 +6,18 @@ import Link from "next/link";
 import { Suspense } from "react";
 import Hero from "@/components/marketing/Hero";
 import LogoMark from "@/components/marketing/LogoMark";
+import { SITE_NAME } from "@/lib/marketing/site";
 
 interface PageProps {
   searchParams?: { error?: string };
 }
+
+export const metadata: Metadata = {
+  title: `Sign in to ${SITE_NAME}`,
+  description: `Sign in to ${SITE_NAME} with Google. Parents create their family; kids join with their own Google account.`,
+  alternates: { canonical: "/login" },
+  robots: { index: true, follow: true },
+};
 
 export default async function LoginPage({ searchParams }: PageProps) {
   // Auth redirect guard — signed-in users skip the marketing page.

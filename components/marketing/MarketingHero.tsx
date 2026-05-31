@@ -73,7 +73,7 @@ export default function MarketingHero() {
         </div>
 
         <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-6 md:p-8">
-          <Hero errorMsg={null} />
+          <Hero errorMsg={null} showHeadline={false} />
         </div>
       </div>
     </header>

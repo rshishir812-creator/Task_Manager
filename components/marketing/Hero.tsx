@@ -6,11 +6,15 @@ import { createClient } from "@/lib/supabase/client";
 
 interface HeroProps {
   errorMsg: string | null;
+  // When embedded inside the marketing homepage (which already renders its
+  // own page-level H1), suppress this component's headline + tagline so we
+  // don't ship two H1s. Defaults to true for the standalone /login page.
+  showHeadline?: boolean;
 }
 
 type Intent = "parent" | "child";
 
-export default function Hero({ errorMsg }: HeroProps) {
+export default function Hero({ errorMsg, showHeadline = true }: HeroProps) {
   const [loading, setLoading] = useState<Intent | null>(null);
 
   async function handleGoogleSignIn(intent: Intent) {
@@ -46,17 +50,21 @@ export default function Hero({ errorMsg }: HeroProps) {
         </div>
       )}
 
-      <h1 className="font-hero font-extrabold text-fg text-balance leading-[0.95] tracking-tight text-[clamp(2rem,7vw,4.75rem)]">
-        Make chores
-        <br />
-        <span className="text-accent-teal">a quest.</span> Not a fight.
-      </h1>
+      {showHeadline && (
+        <>
+          <h1 className="font-hero font-extrabold text-fg text-balance leading-[0.95] tracking-tight text-[clamp(2rem,7vw,4.75rem)]">
+            Make chores
+            <br />
+            <span className="text-accent-teal">a quest.</span> Not a fight.
+          </h1>
 
-      <p className="mt-5 text-fg-muted leading-relaxed text-[clamp(0.95rem,2vw,1.125rem)]">
-        ChoreQuest turns daily habits into a game your kids actually want to play.
-      </p>
+          <p className="mt-5 text-fg-muted leading-relaxed text-[clamp(0.95rem,2vw,1.125rem)]">
+            ChoreQuest turns daily habits into a game your kids actually want to play.
+          </p>
+        </>
+      )}
 
-      <div className="mt-7 flex flex-col gap-3">
+      <div className={`${showHeadline ? "mt-7" : ""} flex flex-col gap-3`}>
         <button
           onClick={() => handleGoogleSignIn("parent")}
           disabled={loading !== null}

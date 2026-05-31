@@ -91,15 +91,16 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Root: redirect based on auth state
+  // Root: signed-in users go to their dashboard; signed-out users see the
+  // public marketing homepage (rendered by app/page.tsx).
   if (pathname === "/") {
-    if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+    if (user) {
+      const { role, isSuperAdmin, failed } = await getRoleAndSuper();
+      const target =
+        failed || role === "parent" || isSuperAdmin ? "/admin/dashboard" : "/dashboard";
+      return NextResponse.redirect(new URL(target, request.url));
     }
-    const { role, isSuperAdmin, failed } = await getRoleAndSuper();
-    const target =
-      failed || role === "parent" || isSuperAdmin ? "/admin/dashboard" : "/dashboard";
-    return NextResponse.redirect(new URL(target, request.url));
+    return response;
   }
 
   return response;
