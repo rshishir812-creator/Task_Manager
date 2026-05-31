@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito, Baloo_2, Inter } from "next/font/google";
+import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/marketing/site";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -26,24 +27,56 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ChoreQuest — Make chores a quest. Not a fight.",
-  description: "ChoreQuest turns daily habits into a game your kids actually want to play.",
-  applicationName: "ChoreQuest",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "chore app",
+    "chore tracker",
+    "gamified chore app",
+    "kids chore chart",
+    "family chore app",
+    "chore app for kids",
+    "habit tracker for kids",
+    "parenting app India",
+    "kids responsibility app",
+    "reward chart app",
+    "COPPA chore app",
+    "PWA chore app",
+    "ChoreQuest",
+  ],
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
   appleWebApp: {
     capable: true,
-    title: "ChoreQuest",
+    title: SITE_NAME,
     statusBarStyle: "black-translucent",
   },
   openGraph: {
-    title: "ChoreQuest — Make chores a quest. Not a fight.",
-    description: "ChoreQuest turns daily habits into a game your kids actually want to play.",
-    siteName: "ChoreQuest",
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+    url: SITE_URL,
     type: "website",
+    locale: "en_IN",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: `${SITE_NAME} — ${SITE_TAGLINE}`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ChoreQuest — Make chores a quest. Not a fight.",
-    description: "ChoreQuest turns daily habits into a game your kids actually want to play.",
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    images: ["/opengraph-image"],
   },
 };
 

@@ -14,6 +14,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Profile } from "@/lib/types";
 
+// Auth-walled, but defensive noindex prevents accidental indexing of any leaked link.
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 export default async function DashboardLayout({
   children,
 }: {

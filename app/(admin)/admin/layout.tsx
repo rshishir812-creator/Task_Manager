@@ -16,6 +16,13 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Profile } from "@/lib/types";
 
+// Belt-and-suspenders: the admin area is already auth-walled, but if a link
+// ever leaks (a shared screenshot URL, a logged history file) we don't want
+// search engines or LLM crawlers indexing the authenticated shell.
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 export default async function AdminLayout({
   children,
 }: {
