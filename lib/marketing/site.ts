@@ -9,7 +9,7 @@ export const SITE_TAGLINE = "Make chores a quest. Not a fight.";
 export const SITE_DESCRIPTION =
   "ChoreQuest turns daily habits into a game your kids actually want to play — built mobile-first for Indian families.";
 
-export const SUPPORT_EMAIL = "r.shishir812@gmail.com";
+export const SUPPORT_EMAIL = "hello.chorequest@gmail.com";
 
 // Mirrors lib/plan-limits.ts in human copy. If those constants change,
 // update both — the imports below keep numeric values in sync automatically.
