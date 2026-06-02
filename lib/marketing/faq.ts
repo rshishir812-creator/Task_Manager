@@ -1,4 +1,5 @@
 import { FREE_LIMITS, TRIAL_DAYS } from "@/lib/plan-limits";
+import { SUPPORT_EMAIL } from "@/lib/marketing/site";
 
 // Each FAQ item powers three surfaces: the visible /faq accordion, the homepage
 // teaser, and the /llms-full.txt markdown. Keep answers factual and short
@@ -119,7 +120,7 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
     id: "delete-data",
     category: "Privacy & safety",
     question: "How do I delete my data or contact support?",
-    answer: `Email ${"r.shishir812@gmail.com"} from the address linked to your account. We'll delete your family, all profiles and all chore history. The Privacy page has the full process.`,
+    answer: `Email ${SUPPORT_EMAIL} from the address linked to your account. We'll delete your family, all profiles and all chore history. The Privacy page has the full process.`,
   },
 ] as const;
 
