@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -21,6 +22,7 @@ function consumeIntentionalSignOut(): boolean {
 export default function SessionWatcher() {
   const [expired, setExpired] = useState(false);
   const redirectingRef = useRef(false);
+  const router = useRouter();
 
   useEffect(() => {
     const supabase = createClient();
@@ -49,10 +51,34 @@ export default function SessionWatcher() {
       }
     });
 
+    // When the app regains focus (PWA reopened, tab refocused) the access token
+    // may have expired while we were away. Don't jump straight to /login on a
+    // momentarily-empty session — first try to refresh it. Only a genuinely
+    // failed refresh means the session is really gone.
+    //
+    // When the session IS still good, re-sync the server components via
+    // router.refresh(). Server-rendered shells (the admin nav, the premium
+    // plan, super-admin tabs) are computed at request time and otherwise stay
+    // frozen on whatever was rendered before we backgrounded — which is why
+    // users came back to a "limited tabs" view and had to sign out/in to get
+    // the full nav. This restores it without re-authenticating.
     const checkSession = async () => {
       if (document.visibilityState !== "visible") return;
+      if (redirectingRef.current) return;
+
       const { data } = await supabase.auth.getSession();
-      if (!data.session) triggerExpired();
+      if (data.session) {
+        router.refresh();
+        return;
+      }
+
+      // No local session — attempt one refresh before giving up.
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed.session) {
+        router.refresh();
+      } else {
+        triggerExpired();
+      }
     };
 
     document.addEventListener("visibilitychange", checkSession);
@@ -61,7 +87,7 @@ export default function SessionWatcher() {
       sub.subscription.unsubscribe();
       document.removeEventListener("visibilitychange", checkSession);
     };
-  }, []);
+  }, [router]);
 
   return (
     <AnimatePresence>

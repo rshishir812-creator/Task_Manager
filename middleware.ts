@@ -14,6 +14,20 @@ export async function middleware(request: NextRequest) {
 
   const { user, response } = await updateSession(request);
 
+  // Copy any auth cookies that updateSession refreshed onto a redirect we build
+  // ourselves. Supabase refresh tokens are single-use/rotating: updateSession
+  // may have just consumed the old one and written the new one onto `response`.
+  // A bare NextResponse.redirect() does NOT carry those Set-Cookie headers, so
+  // returning one would discard the rotated token — the browser keeps a dead
+  // token and the session dies on the next request. Because the PWA's start_url
+  // is "/", every cold launch hits a redirect here, which is why sessions kept
+  // dropping and users had to sign in again and again.
+  const redirectWithSession = (target: string) => {
+    const redirect = NextResponse.redirect(new URL(target, request.url));
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  };
+
   // Helper: fetch role + super-admin flag from profiles.
   // `failed` distinguishes a transient read error (e.g. right after a token
   // refresh) from a genuine "no profile" row, so callers can avoid silently
@@ -56,7 +70,7 @@ export async function middleware(request: NextRequest) {
       // never silently downgraded.
       const target =
         failed || role === "parent" || isSuperAdmin ? "/admin/dashboard" : "/dashboard";
-      return NextResponse.redirect(new URL(target, request.url));
+      return redirectWithSession(target);
     }
     return response;
   }
@@ -64,13 +78,13 @@ export async function middleware(request: NextRequest) {
   // Admin routes: parents and super admins
   if (pathname.startsWith("/admin")) {
     if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return redirectWithSession("/login");
     }
     const { role, isSuperAdmin, failed } = await getRoleAndSuper();
     // If the role read failed, let the request through; the admin layout
     // re-checks with the service-role client and redirects a real child.
     if (!failed && role !== "parent" && !isSuperAdmin) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return redirectWithSession("/dashboard");
     }
     return response;
   }
@@ -78,7 +92,7 @@ export async function middleware(request: NextRequest) {
   // User dashboard routes: require auth
   if (pathname.startsWith("/dashboard")) {
     if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return redirectWithSession("/login");
     }
     return response;
   }
@@ -86,7 +100,7 @@ export async function middleware(request: NextRequest) {
   // Profile/account page: any authenticated user (parent or child)
   if (pathname.startsWith("/profile")) {
     if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return redirectWithSession("/login");
     }
     return response;
   }
@@ -98,7 +112,7 @@ export async function middleware(request: NextRequest) {
       const { role, isSuperAdmin, failed } = await getRoleAndSuper();
       const target =
         failed || role === "parent" || isSuperAdmin ? "/admin/dashboard" : "/dashboard";
-      return NextResponse.redirect(new URL(target, request.url));
+      return redirectWithSession(target);
     }
     return response;
   }
