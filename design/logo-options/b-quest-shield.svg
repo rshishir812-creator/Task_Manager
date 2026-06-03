@@ -14,4 +14,9 @@
         stroke-linecap="round" stroke-linejoin="round"/>
   <!-- Arrowhead: tip at (166,100), aligned to the check direction (115,155)→(166,100) -->
   <polygon points="166,100 157,130 137,111" fill="#00E5FF"/>
+  <!-- Fletchings: 2 feather barbs perpendicular-ish to the shaft, on each side of the tail -->
+  <path d="M 84 109 L 90 130" stroke="#00E5FF" stroke-width="9"
+        stroke-linecap="round"/>
+  <path d="M 69 124 L 90 130" stroke="#00E5FF" stroke-width="9"
+        stroke-linecap="round"/>
 </svg>
