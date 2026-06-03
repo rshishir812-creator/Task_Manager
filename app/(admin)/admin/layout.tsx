@@ -5,15 +5,11 @@ import AdminNav from "@/components/layout/AdminNav";
 import { NavProgressProvider } from "@/components/ui/NavProgress";
 import SessionWatcher from "@/components/auth/SessionWatcher";
 import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
-import SignOutButton from "@/components/ui/SignOutButton";
-import ThemeToggle from "@/components/ui/ThemeToggle";
-import HelpButton from "@/components/walkthrough/HelpButton";
+import ProfileMenu from "@/components/ui/ProfileMenu";
 import WalkthroughManager from "@/components/walkthrough/WalkthroughManager";
 import LogoMark from "@/components/marketing/LogoMark";
 import TrialBanner from "@/components/billing/TrialBanner";
 import { getFamilyPlan } from "@/lib/subscription";
-import Image from "next/image";
-import Link from "next/link";
 import type { Profile } from "@/lib/types";
 
 // Belt-and-suspenders: the admin area is already auth-walled, but if a link
@@ -91,29 +87,12 @@ export default async function AdminLayout({
           <LogoMark size={22} className="text-accent-teal" />
           ChoreQuest <span className="text-accent-amber text-sm font-display font-bold ml-1">Admin</span>
         </span>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <HelpButton />
-          <Link href="/profile" aria-label="Profile & account" className="flex items-center gap-2 shrink-0">
-            {profile?.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={profile.name ?? "Avatar"}
-                width={32}
-                height={32}
-                className="rounded-full"
-              />
-            ) : (
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-accent-amber/20 text-accent-amber text-sm font-bold">
-                {(profile?.name ?? "?").charAt(0).toUpperCase()}
-              </span>
-            )}
-            <span className="text-xs text-accent-amber font-semibold hidden sm:block">
-              {profile?.name?.split(" ")[0]}
-            </span>
-          </Link>
-          <SignOutButton />
-        </div>
+        <ProfileMenu
+          avatarUrl={profile?.avatar_url ?? null}
+          name={profile?.name ?? null}
+          email={profile?.email ?? null}
+          accent="amber"
+        />
       </header>
 
       {/* Body: sidebar + content */}

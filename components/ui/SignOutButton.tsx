@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/lib/auth/sign-out";
 import { LogOut, Loader2 } from "lucide-react";
 
 export default function SignOutButton() {
@@ -10,21 +10,7 @@ export default function SignOutButton() {
   async function handleSignOut() {
     if (isLoading) return;
     setIsLoading(true);
-
-    // Tell SessionWatcher this is an intentional sign-out so it doesn't
-    // flash a "Session expired" toast while we navigate away.
-    try {
-      sessionStorage.setItem("chorequest:intentional-signout", "1");
-    } catch {
-      // sessionStorage can throw in some embedded contexts — ignore.
-    }
-
-    const supabase = createClient();
-    await supabase.auth.signOut();
-
-    // Hard redirect so the React tree (and any cached server data) is fully
-    // torn down — back button can't return to an authenticated page.
-    window.location.replace("/login");
+    await signOut();
   }
 
   return (
