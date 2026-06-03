@@ -1,6 +1,6 @@
 "use client";
 
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 
 const PRIVATE_PREFIXES = ["/admin", "/dashboard", "/profile"];
 
