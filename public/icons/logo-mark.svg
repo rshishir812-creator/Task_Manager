@@ -1,12 +1,20 @@
 <svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="ChoreQuest">
-  <!-- Outer ring (the 'Q' / quest circle) -->
-  <circle cx="128" cy="128" r="80" stroke="currentColor" stroke-width="22" />
-  <!-- Checkmark — the short leg sits inside, the long leg exits the ring as the Q's tail -->
-  <path
-    d="M 82 134 L 118 172 L 210 64"
-    stroke="currentColor"
-    stroke-width="26"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
+  <!-- Flat reference of the ChoreQuest Quest Shield mark. The shipped art is the
+       raster public/icons/logo-mark.png (and app-icon-source.png); this SVG is a
+       single-colour fallback / design reference only. -->
+  <path d="M 128 50
+           C 106 62, 80 66, 64 66
+           L 64 132
+           C 64 176, 96 202, 128 214
+           C 160 202, 192 176, 192 132
+           L 192 66
+           C 176 66, 150 62, 128 50 Z"
+        stroke="currentColor" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M 103 134 L 126 157 L 155 126"
+        stroke="currentColor" stroke-width="14"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <polygon points="172,107 164,134 146,117" fill="currentColor"/>
+  <path d="M 89 110 L 103 134" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 85 117 L 103 134" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 79 121 L 103 134" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
 </svg>

@@ -1,10 +1,17 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export const alt = "ChoreQuest — Make chores a quest. Not a fight.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OGImage() {
+export default async function OGImage() {
+  // Embed the final brand mark (transparent shield) as a data URL so Satori
+  // renders the real logo in the corner wordmark.
+  const markData = await readFile(join(process.cwd(), "public/icons/logo-mark.png"));
+  const markSrc = `data:image/png;base64,${markData.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -35,16 +42,8 @@ export default function OGImage() {
 
         {/* top wordmark */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <svg viewBox="0 0 256 256" width="36" height="36" fill="none">
-            <circle cx="128" cy="128" r="80" stroke="#00E5FF" strokeWidth="22" />
-            <path
-              d="M 82 134 L 118 172 L 210 64"
-              stroke="#00E5FF"
-              strokeWidth="26"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={markSrc} alt="ChoreQuest" width={44} height={44} />
           <div
             style={{
               fontSize: 18,
