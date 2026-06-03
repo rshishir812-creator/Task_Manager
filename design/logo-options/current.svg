@@ -1,0 +1,5 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="ChoreQuest current">
+  <circle cx="128" cy="128" r="80" stroke="#00E5FF" stroke-width="22" />
+  <path d="M 82 134 L 118 172 L 210 64" stroke="#00E5FF" stroke-width="26"
+        stroke-linecap="round" stroke-linejoin="round" />
+</svg>

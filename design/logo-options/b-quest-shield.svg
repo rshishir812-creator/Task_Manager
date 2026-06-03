@@ -1,0 +1,21 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="ChoreQuest Quest Shield">
+  <!-- Shield: dark fill + teal stroke -->
+  <path d="M 128 50
+           C 106 62, 80 66, 64 66
+           L 64 132
+           C 64 176, 96 202, 128 214
+           C 160 202, 192 176, 192 132
+           L 192 66
+           C 176 66, 150 62, 128 50 Z"
+        fill="#0B0F2A" stroke="#00E5FF" stroke-width="14" stroke-linejoin="round"/>
+  <!-- Arrow-check body — recentered + scaled to clear shield sides on all four sides -->
+  <path d="M 103 134 L 126 157 L 155 126"
+        stroke="#00E5FF" stroke-width="14"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arrowhead at the tip -->
+  <polygon points="172,107 164,134 146,117" fill="#00E5FF"/>
+  <!-- Fletchings: 3 barbs in a tight V at the tail (103,134) — outer barbs longer than center for splayed-feather look -->
+  <path d="M 89 110 L 103 134" stroke="#00E5FF" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 85 117 L 103 134" stroke="#00E5FF" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 79 121 L 103 134" stroke="#00E5FF" stroke-width="6" stroke-linecap="round"/>
+</svg>

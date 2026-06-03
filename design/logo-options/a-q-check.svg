@@ -1,0 +1,9 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="ChoreQuest Q-Check">
+  <!-- Quest ring -->
+  <circle cx="128" cy="128" r="80" stroke="#00E5FF" stroke-width="22" />
+  <!-- Check, fully inside the ring -->
+  <path d="M 88 132 L 116 160 L 166 100" stroke="#00E5FF" stroke-width="24"
+        stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Q-tail: the diagonal flick that turns the ring into a 'Q' for Quest -->
+  <path d="M 166 166 L 208 208" stroke="#00E5FF" stroke-width="22" stroke-linecap="round" />
+</svg>
