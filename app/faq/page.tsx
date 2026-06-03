@@ -6,6 +6,7 @@ import FaqAccordion from "@/components/marketing/FaqAccordion";
 import FaqJsonLd from "@/components/marketing/FaqJsonLd";
 import LogoMark from "@/components/marketing/LogoMark";
 import Footer from "@/components/marketing/Footer";
+import PublicAnalytics from "@/components/analytics/PublicAnalytics";
 
 export const metadata: Metadata = {
   title: `FAQ — ${SITE_NAME}`,
@@ -102,6 +103,7 @@ export default function FaqPage() {
 
         <Footer />
       </main>
+      <PublicAnalytics />
     </div>
   );
 }

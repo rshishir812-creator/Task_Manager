@@ -7,6 +7,7 @@ import FaqAccordion from "@/components/marketing/FaqAccordion";
 import FaqJsonLd from "@/components/marketing/FaqJsonLd";
 import OrgJsonLd from "@/components/marketing/OrgJsonLd";
 import Footer from "@/components/marketing/Footer";
+import PublicAnalytics from "@/components/analytics/PublicAnalytics";
 import Link from "next/link";
 import { FAQ_ITEMS } from "@/lib/marketing/faq";
 import { SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/marketing/site";
@@ -94,6 +95,7 @@ export default function Home() {
 
         <Footer />
       </main>
+      <PublicAnalytics />
     </div>
   );
 }

@@ -33,7 +33,7 @@ Families with kids roughly 6+. Built mobile-first and India-friendly: chore sche
 Progressive Web App. Runs in any modern browser on phone, tablet or desktop. Installable to home screen on iOS and Android. No app-store download.
 
 ## Privacy
-COPPA-compliant parent-consent model. No ads. No third-party advertising trackers. No data sales. Google OAuth sign-in. Database on Supabase, deployment on Vercel.
+COPPA-compliant parent-consent model. No ads. No third-party advertising trackers. No data sales. Google OAuth sign-in. Database on Supabase, deployment on Vercel. Privacy-friendly, cookieless visit counting (Vercel Web Analytics) runs only on public marketing pages, never inside the app.
 
 ## What ${SITE_NAME} is NOT
 - Not a habit tracker for adults.
