@@ -1,0 +1,19 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="ChoreQuest Level-Up Spark">
+  <!-- Bold check that sweeps upward = level-up / momentum -->
+  <path d="M 60 142 L 110 188 L 200 66" stroke="#00E5FF" stroke-width="30"
+        stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Main spark at the tip: 4-point sparkle (XP / reward) -->
+  <path d="M 206 34
+           C 209 56, 214 61, 236 64
+           C 214 67, 209 72, 206 94
+           C 203 72, 198 67, 176 64
+           C 198 61, 203 56, 206 34 Z"
+        fill="#FFB347" />
+  <!-- Tiny secondary spark for life -->
+  <path d="M 162 40
+           C 163 49, 165 51, 174 52
+           C 165 53, 163 55, 162 64
+           C 161 55, 159 53, 150 52
+           C 159 51, 161 49, 162 40 Z"
+        fill="#FFB347" />
+</svg>

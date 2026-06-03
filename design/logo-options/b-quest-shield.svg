@@ -1,0 +1,14 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="ChoreQuest Quest Shield">
+  <!-- Shield: quest / achievement / family-safe -->
+  <path d="M 128 50
+           C 106 62, 80 66, 64 66
+           L 64 132
+           C 64 176, 96 202, 128 214
+           C 160 202, 192 176, 192 132
+           L 192 66
+           C 176 66, 150 62, 128 50 Z"
+        fill="#00E5FF" />
+  <!-- Check inside, amber (cyan+amber are near-complementary = high contrast) -->
+  <path d="M 100 130 L 120 152 L 160 104" stroke="#FFB347" stroke-width="20"
+        stroke-linecap="round" stroke-linejoin="round" />
+</svg>
