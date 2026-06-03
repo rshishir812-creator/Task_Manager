@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Privacy Policy",
-  description: "How ChoreQuest collects, uses and protects family data. COPPA-compliant; no ads, no tracking, no data sales.",
+  description: "How ChoreQuest collects, uses and protects family data. COPPA-compliant; no ads, no cookies, no data sales.",
   alternates: { canonical: "/legal/privacy" },
   robots: { index: true, follow: true },
 };
@@ -85,7 +85,11 @@ export default function PrivacyPolicy() {
               <li><strong className="text-fg">Google</strong> — OAuth sign-in provider only; we receive only your name, email, and profile photo</li>
             </ul>
             <p className="mt-3 text-fg-muted">
-              No analytics platforms, advertising networks, or data brokers have access to your data.
+              On our public marketing pages (home, FAQ, sign-in and legal pages) we use{" "}
+              <strong className="text-fg">Vercel Web Analytics</strong> to count visits. It is
+              cookieless, collects no personal information, and never runs inside the app where your
+              family&apos;s data lives. No advertising networks or data brokers have access to your data,
+              and we never run analytics on children&apos;s screens.
             </p>
           </section>
 

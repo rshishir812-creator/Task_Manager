@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import Hero from "@/components/marketing/Hero";
 import LogoMark from "@/components/marketing/LogoMark";
+import PublicAnalytics from "@/components/analytics/PublicAnalytics";
 import { SITE_NAME } from "@/lib/marketing/site";
 
 interface PageProps {
@@ -69,7 +70,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
           <div className="text-[11px] md:text-xs text-fg-muted/80 leading-relaxed">
             🔒 COPPA-compliant
             <span className="text-fg-muted/40 mx-2">·</span>
-            🚫 No ads, no tracking
+            🚫 No ads · No cookies
             <span className="text-fg-muted/40 mx-2">·</span>
             🎮 Made with love for parents and kids
           </div>
@@ -86,6 +87,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
           </div>
         </footer>
       </main>
+      <PublicAnalytics />
     </div>
   );
 }
