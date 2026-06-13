@@ -11,6 +11,8 @@ import StreakFlame from "@/components/gamification/StreakFlame";
 import ConfettiBlast from "@/components/gamification/ConfettiBlast";
 import LevelUpModal from "@/components/gamification/LevelUpModal";
 import BadgeCelebrationModal from "@/components/gamification/BadgeCelebrationModal";
+import QuestCompleteModal, { type CompletedQuest } from "@/components/gamification/QuestCompleteModal";
+import WeeklyQuestCard, { type QuestView } from "@/components/gamification/WeeklyQuestCard";
 import MilestonesCard from "@/components/gamification/MilestonesCard";
 import { postJsonWithAuthRetry, AUTH_EXPIRED } from "@/lib/fetch-with-auth";
 
@@ -26,6 +28,7 @@ interface DashboardClientProps {
   today: string;
   overallStreak: number;
   milestones: MilestoneProgress[];
+  quest: QuestView | null;
 }
 
 function getGreeting(name: string) {
@@ -47,6 +50,7 @@ export default function DashboardClient({
   today,
   overallStreak: initialOverallStreak,
   milestones,
+  quest,
 }: DashboardClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -65,6 +69,7 @@ export default function DashboardClient({
   const [perfectDay, setPerfectDay] = useState<{ date: string } | null>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; name: string } | null>(null);
   const [newBadges, setNewBadges] = useState<{ title: string; icon: string; description?: string }[]>([]);
+  const [completedQuests, setCompletedQuests] = useState<CompletedQuest[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const isYesterday = view === "yesterday";
@@ -119,10 +124,13 @@ export default function DashboardClient({
           badgesAwarded: { title: string; icon: string; description?: string }[];
           dailyBonusAwarded: boolean;
           allComplete: boolean;
+          challengesCompleted?: CompletedQuest[];
+          questRewardPoints?: number;
         };
 
         const prevLevel = getLevelInfo(totalPoints).level;
-        const newTotalPoints = totalPoints + data.pointsEarned + (data.dailyBonusAwarded ? 50 : 0);
+        const newTotalPoints =
+          totalPoints + data.pointsEarned + (data.dailyBonusAwarded ? 50 : 0) + (data.questRewardPoints ?? 0);
         const newLevelInfo = getLevelInfo(newTotalPoints);
 
         setTotalPoints(newTotalPoints);
@@ -134,6 +142,9 @@ export default function DashboardClient({
         const dayLabel = date === today ? "today" : "yesterday";
         if (data.dailyBonusAwarded) {
           showToast(`🎉 +50 bonus for completing all of ${dayLabel}'s chores!`);
+        }
+        if (data.challengesCompleted && data.challengesCompleted.length > 0) {
+          setCompletedQuests(data.challengesCompleted);
         }
         if (data.badgesAwarded.length > 0) setNewBadges(data.badgesAwarded);
         if (newLevelInfo.level > prevLevel) {
@@ -277,6 +288,13 @@ export default function DashboardClient({
         />
       )}
 
+      {completedQuests.length > 0 && (
+        <QuestCompleteModal
+          quests={completedQuests}
+          onDone={() => setCompletedQuests([])}
+        />
+      )}
+
       {toastMsg && (
         <div className="fixed bottom-above-nav left-1/2 -translate-x-1/2 z-50 bg-bg-elevated border border-[var(--border)] text-fg text-sm px-4 py-2.5 rounded-xl shadow-lg max-w-xs text-center transition-all">
           {toastMsg}
@@ -347,6 +365,8 @@ export default function DashboardClient({
           </div>
         </div>
       </div>
+
+      {quest && <WeeklyQuestCard quest={quest} />}
 
       <MilestonesCard milestones={milestones} />
 

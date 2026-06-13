@@ -8,6 +8,7 @@ import PageTransition from "@/components/ui/PageTransition";
 import { NavProgressProvider } from "@/components/ui/NavProgress";
 import SessionWatcher from "@/components/auth/SessionWatcher";
 import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
+import WhatsNewManager from "@/components/whatsnew/WhatsNewManager";
 import type { Profile } from "@/lib/types";
 
 // Auth-walled, but defensive noindex prevents accidental indexing of any leaked link.
@@ -54,6 +55,7 @@ export default async function DashboardLayout({
       <SessionWatcher />
       <InstallAppPrompt accent="teal" />
       <WalkthroughManager role="child" seenAt={profile?.walkthrough_seen_at ?? null} />
+      <WhatsNewManager seenVersion={profile?.whats_new_seen_version ?? null} />
     </div>
     </NavProgressProvider>
   );

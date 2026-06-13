@@ -1,8 +1,17 @@
 import type { Badge, ChoreAssignment, ChoreCompletion, Chore, UserBadge } from "./types";
 import { computeChoreStreak, computeOverallStreak, getTodayIST } from "./streak-calculator";
+import { getLevelInfo } from "./points-calculator";
 
 export interface BadgeAwardResult {
   newBadges: Badge[];
+}
+
+// Phase 7 — extra context the new badge families need (levels need total XP,
+// quest badges need the quest-completion count). Optional so the signature
+// stays backward-compatible; total/quality counts are derived from completions.
+export interface BadgeExtras {
+  totalXp?: number;
+  questsCompleted?: number;
 }
 
 /**
@@ -20,10 +29,18 @@ export function checkBadges(
   chores: Chore[],
   completions: ChoreCompletion[],
   today: string = getTodayIST(),
-  assignments?: ChoreAssignment[]
+  assignments?: ChoreAssignment[],
+  extras?: BadgeExtras
 ): BadgeAwardResult {
   const earnedIds = new Set(userBadges.map((ub) => ub.badge_id));
   const newBadges: Badge[] = [];
+
+  // Phase 7 — counts shared by the new badge families.
+  const verifiedNonException = completions.filter(
+    (c) => c.status === "verified" && !c.is_exception
+  );
+  const totalCompletions = verifiedNonException.length;
+  const qualityFourCount = verifiedNonException.filter((c) => c.quality_rating === 4).length;
 
   const assignmentByChoreId = new Map<string, ChoreAssignment>();
   if (assignments) {
@@ -41,6 +58,14 @@ export function checkBadges(
         (c) => c.chore_id === badge.chore_id && !c.is_exception && c.status === "verified"
       ).length;
       if (count >= badge.threshold) {
+        newBadges.push(badge);
+      }
+      continue;
+    }
+
+    // Phase 7 — cumulative total-completion milestones (any chore).
+    if (badge.badge_type === "milestone" && badge.chore_id === null) {
+      if (totalCompletions >= badge.threshold) {
         newBadges.push(badge);
       }
       continue;
@@ -122,6 +147,23 @@ export function checkBadges(
     if (check && check(badge)) {
       newBadges.push(badge);
     }
+  }
+
+  // Phase 7 — new special families: level reached / quality aces / quests done.
+  for (const badge of badges) {
+    if (earnedIds.has(badge.id)) continue;
+    if (badge.badge_type !== "special" || badge.threshold === null) continue;
+    if (newBadges.includes(badge)) continue;
+
+    let earned = false;
+    if (badge.code.startsWith("level_") && extras?.totalXp != null) {
+      earned = getLevelInfo(extras.totalXp).level >= badge.threshold;
+    } else if (badge.code.startsWith("quality_ace_")) {
+      earned = qualityFourCount >= badge.threshold;
+    } else if (badge.code.startsWith("quest_") && extras?.questsCompleted != null) {
+      earned = extras.questsCompleted >= badge.threshold;
+    }
+    if (earned) newBadges.push(badge);
   }
 
   return { newBadges };

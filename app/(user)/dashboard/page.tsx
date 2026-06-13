@@ -4,8 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getChoresForDay, getDayOfWeek, getTodayIST, getYesterdayIST, computeOverallStreak } from "@/lib/streak-calculator";
 import { computeMilestones } from "@/lib/milestone-calculator";
 import { getAssignmentsForUser } from "@/lib/auth-scope";
+import { ensureActiveChallenges } from "@/lib/challenge-server";
+import { computeChallengeProgress } from "@/lib/challenge-engine";
+import { sumChallengeXp } from "@/lib/xp";
 import DashboardClient from "@/components/chores/DashboardClient";
-import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile, Badge, UserBadge } from "@/lib/types";
+import type { QuestView } from "@/components/gamification/WeeklyQuestCard";
+import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile, Badge, UserBadge, ChallengeClaim } from "@/lib/types";
 
 export default async function UserDashboard() {
   const supabase = createClient();
@@ -27,6 +31,7 @@ export default async function UserDashboard() {
     { data: bonusesData },
     { data: badgesData },
     { data: userBadgesData },
+    { data: claimsData },
     assignments,
   ] = await Promise.all([
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id).order("sort_order"),
@@ -35,6 +40,7 @@ export default async function UserDashboard() {
     adminClient.from("daily_bonuses").select("*").eq("user_id", user.id),
     adminClient.from("badges").select("*").eq("family_id", profile.family_id),
     adminClient.from("user_badges").select("*").eq("user_id", user.id),
+    adminClient.from("challenge_claims").select("*").eq("user_id", user.id),
     getAssignmentsForUser(user.id),
   ]);
 
@@ -49,6 +55,7 @@ export default async function UserDashboard() {
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];
   const badges = (badgesData as Badge[] | null) ?? [];
   const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
+  const claims = (claimsData as ChallengeClaim[] | null) ?? [];
 
   const today = getTodayIST();
   const todayDow = getDayOfWeek(today);
@@ -60,12 +67,38 @@ export default async function UserDashboard() {
   const yesterdaysChores = getChoresForDay(chores, yesterdayDow);
   const yesterdayCompletions = allCompletions.filter((c) => c.completed_date === yesterday);
 
-  // Calculate total points: sum of all completions + daily bonuses
+  // Calculate total points: sum of all completions + daily bonuses + quest rewards
   const totalPoints =
     allCompletions.reduce((sum, c) => sum + (c.points_earned ?? 0), 0) +
-    bonuses.reduce((sum, b) => sum + b.points_bonus, 0);
+    bonuses.reduce((sum, b) => sum + b.points_bonus, 0) +
+    sumChallengeXp(claims);
 
   const overallStreak = computeOverallStreak(chores, allCompletions, today, assignments);
+
+  // Weekly Quest — ensure this week's quest exists, compute progress for the card.
+  const activeChallenges = await ensureActiveChallenges(profile.family_id, today);
+  const claimedIds = new Set(claims.map((c) => c.challenge_id));
+  const activeChallenge = activeChallenges[0] ?? null;
+  let quest: QuestView | null = null;
+  if (activeChallenge) {
+    const progress = computeChallengeProgress(activeChallenge, {
+      completions: allCompletions,
+      dailyBonuses: bonuses,
+    });
+    const claimed = claimedIds.has(activeChallenge.id);
+    const msLeft = new Date(`${activeChallenge.period_end}T23:59:59Z`).getTime() - new Date(`${today}T00:00:00Z`).getTime();
+    quest = {
+      title: activeChallenge.title,
+      description: activeChallenge.description,
+      icon: activeChallenge.icon,
+      current: progress.current,
+      target: progress.target,
+      rewardPoints: activeChallenge.reward_points,
+      complete: progress.complete,
+      claimed,
+      daysLeft: Math.max(0, Math.round(msLeft / (24 * 60 * 60 * 1000))),
+    };
+  }
 
   const milestones = computeMilestones({
     badges,
@@ -74,6 +107,7 @@ export default async function UserDashboard() {
     completions: allCompletions,
     today,
     assignments,
+    extras: { totalXp: totalPoints, questsCompleted: claims.length },
   }).slice(0, 3);
 
   return (
@@ -89,6 +123,7 @@ export default async function UserDashboard() {
       today={today}
       overallStreak={overallStreak}
       milestones={milestones}
+      quest={quest}
     />
   );
 }

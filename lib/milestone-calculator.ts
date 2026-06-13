@@ -1,5 +1,6 @@
 import type { Badge, Chore, ChoreAssignment, ChoreCompletion, UserBadge } from "./types";
 import { computeChoreStreak, computeOverallStreak } from "./streak-calculator";
+import { getLevelInfo } from "./points-calculator";
 
 export type MilestoneProgress = {
   badge: Badge;
@@ -91,8 +92,9 @@ export function computeMilestones(args: {
   completions: ChoreCompletion[];
   today: string;
   assignments?: ChoreAssignment[];
+  extras?: { totalXp?: number; questsCompleted?: number };
 }): MilestoneProgress[] {
-  const { badges, userBadges, chores, completions, today, assignments } = args;
+  const { badges, userBadges, chores, completions, today, assignments, extras } = args;
   const earnedIds = new Set(userBadges.map((ub) => ub.badge_id));
   const results: MilestoneProgress[] = [];
 
@@ -101,6 +103,14 @@ export function computeMilestones(args: {
     for (const a of assignments) assignmentByChoreId.set(a.chore_id, a);
   }
   const safeAssignments = assignments ?? [];
+
+  // Phase 7 — shared counts for the new badge families.
+  const verifiedNonException = completions.filter(
+    (c) => c.status === "verified" && !c.is_exception
+  );
+  const totalCompletions = verifiedNonException.length;
+  const qualityFourCount = verifiedNonException.filter((c) => c.quality_rating === 4).length;
+  const currentLevel = extras?.totalXp != null ? getLevelInfo(extras.totalXp).level : null;
 
   for (const badge of badges) {
     if (earnedIds.has(badge.id)) continue;
@@ -120,13 +130,27 @@ export function computeMilestones(args: {
         current = computeChoreStreak(c, completions, today, assignmentByChoreId.get(c.id));
       }
     } else if (badge.badge_type === "special") {
-      const handler = SPECIAL_HANDLERS[badge.code];
-      if (!handler) continue;
-      const res = handler(badge, chores, completions, today, assignmentByChoreId, safeAssignments);
-      if (!res) continue;
-      current = res.current;
-      target = res.target;
-      chore = res.chore;
+      // Phase 7 — new special families first (level / quality / quests).
+      if (badge.code.startsWith("level_") && badge.threshold !== null) {
+        if (currentLevel === null) continue;
+        current = currentLevel;
+        target = badge.threshold;
+      } else if (badge.code.startsWith("quality_ace_") && badge.threshold !== null) {
+        current = qualityFourCount;
+        target = badge.threshold;
+      } else if (badge.code.startsWith("quest_") && badge.threshold !== null) {
+        if (extras?.questsCompleted == null) continue;
+        current = extras.questsCompleted;
+        target = badge.threshold;
+      } else {
+        const handler = SPECIAL_HANDLERS[badge.code];
+        if (!handler) continue;
+        const res = handler(badge, chores, completions, today, assignmentByChoreId, safeAssignments);
+        if (!res) continue;
+        current = res.current;
+        target = res.target;
+        chore = res.chore;
+      }
     } else if (badge.badge_type === "milestone" && badge.chore_id !== null && badge.threshold !== null) {
       const c = chores.find((ch) => ch.id === badge.chore_id);
       if (!c) continue;
@@ -135,6 +159,10 @@ export function computeMilestones(args: {
       current = completions.filter(
         (cc) => cc.chore_id === badge.chore_id && !cc.is_exception && cc.status === "verified"
       ).length;
+    } else if (badge.badge_type === "milestone" && badge.chore_id === null && badge.threshold !== null) {
+      // Phase 7 — cumulative total-completion milestones.
+      target = badge.threshold;
+      current = totalCompletions;
     }
 
     if (current === null || target === null || target <= 0) continue;

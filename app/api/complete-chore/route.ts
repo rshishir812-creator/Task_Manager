@@ -10,7 +10,10 @@ import {
   getTodayIST,
 } from "@/lib/streak-calculator";
 import { DAILY_BONUS_POINTS } from "@/lib/constants";
-import type { Chore, ChoreAssignment, ChoreCompletion, Badge, UserBadge, Streak, CompletionStatus } from "@/lib/types";
+import { ensureActiveChallenges } from "@/lib/challenge-server";
+import { computeChallengeProgress } from "@/lib/challenge-engine";
+import { getTotalXp } from "@/lib/xp";
+import type { Chore, ChoreAssignment, ChoreCompletion, Badge, UserBadge, Streak, CompletionStatus, DailyBonus, ChallengeClaim } from "@/lib/types";
 
 /** "HH:MM:SS" current IST clock string. */
 function currentIstHHMMSS(): string {
@@ -259,6 +262,59 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // ============================================================
+  // Weekly Quests (Phase 7) — evaluate BEFORE badges so quest-completion
+  // badges can count a freshly-completed quest. Read-only over existing data;
+  // a completed quest inserts one challenge_claims row (idempotent via unique).
+  // ============================================================
+  const [bonusesRes, claimsRes] = await Promise.all([
+    adminClient.from("daily_bonuses").select("*").eq("user_id", user.id),
+    adminClient.from("challenge_claims").select("*").eq("user_id", user.id),
+  ]);
+  const dailyBonuses = (bonusesRes.data as DailyBonus[] | null) ?? [];
+  const existingClaims = (claimsRes.data as ChallengeClaim[] | null) ?? [];
+  const claimedChallengeIds = new Set(existingClaims.map((c) => c.challenge_id));
+
+  const challengesCompleted: { title: string; icon: string; description?: string; reward_points: number }[] = [];
+  const newClaims: ChallengeClaim[] = [];
+
+  if (status === "verified") {
+    const activeChallenges = await ensureActiveChallenges(familyId, completedDate);
+    for (const challenge of activeChallenges) {
+      if (claimedChallengeIds.has(challenge.id)) continue;
+      const progress = computeChallengeProgress(challenge, { completions, dailyBonuses });
+      if (!progress.complete) continue;
+
+      const { error: claimErr } = await adminClient.from("challenge_claims").insert({
+        user_id: user.id,
+        challenge_id: challenge.id,
+        progress_count: progress.current,
+        reward_points: challenge.reward_points,
+      });
+      // Ignore unique-violation races; only celebrate rows we actually inserted.
+      if (!claimErr) {
+        challengesCompleted.push({
+          title: challenge.title,
+          icon: challenge.icon ?? "🎯",
+          description: challenge.description ?? undefined,
+          reward_points: challenge.reward_points,
+        });
+        newClaims.push({
+          id: "", user_id: user.id, challenge_id: challenge.id,
+          progress_count: progress.current, reward_points: challenge.reward_points,
+          claimed_at: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  const allClaims = [...existingClaims, ...newClaims];
+  const questRewardPoints = newClaims.reduce((s, c) => s + c.reward_points, 0);
+
+  // Total XP basis for level badges — matches the child dashboard's level
+  // (all completions + bonuses + quest rewards).
+  const totalXp = getTotalXp({ completions, bonuses: dailyBonuses, claims: allClaims });
+
   // Badges
   const { data: allBadges } = await adminClient
     .from("badges")
@@ -277,6 +333,7 @@ export async function POST(request: NextRequest) {
     completions,
     completedDate,
     assignments,
+    { totalXp, questsCompleted: allClaims.length },
   );
 
   if (newBadges.length > 0) {
@@ -297,5 +354,7 @@ export async function POST(request: NextRequest) {
     dailyBonusAwarded,
     allComplete,
     status,
+    challengesCompleted,
+    questRewardPoints,
   });
 }

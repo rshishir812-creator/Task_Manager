@@ -25,6 +25,8 @@ export interface Profile {
   created_at: string;
   privacy_consent_given_at: string | null;
   walkthrough_seen_at: string | null;
+  // Phase 7 — version of the "What's New" announcement this user last dismissed.
+  whats_new_seen_version: string | null;
 }
 
 export interface ChildInvitation {
@@ -164,6 +166,38 @@ export interface Redemption {
   decided_note: string | null;
 }
 
+// Phase 7 — Weekly Quests
+export type ChallengeGoalType =
+  | "chores_completed"
+  | "perfect_days"
+  | "high_quality"
+  | "early_bird";
+
+export interface Challenge {
+  id: string;
+  family_id: string;
+  code: string;
+  title: string;
+  description: string | null;
+  icon: string | null;
+  goal_type: ChallengeGoalType;
+  goal_target: number;
+  reward_points: number;
+  period_start: string;
+  period_end: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ChallengeClaim {
+  id: string;
+  user_id: string;
+  challenge_id: string;
+  progress_count: number;
+  reward_points: number;
+  claimed_at: string;
+}
+
 export type FeedbackStatus = "new" | "in_progress" | "resolved" | "archived";
 
 export interface Feedback {
@@ -199,6 +233,8 @@ export type Database = {
       reward_assignments: { Row: RewardAssignment; Insert: RewardAssignment; Update: Partial<RewardAssignment> };
       redemptions: { Row: Redemption; Insert: Omit<Redemption, "id" | "requested_at">; Update: Partial<Redemption> };
       feedback: { Row: Feedback; Insert: Omit<Feedback, "id" | "created_at" | "status" | "admin_note" | "reviewed_by" | "reviewed_at"> & { status?: FeedbackStatus }; Update: Partial<Feedback> };
+      challenges: { Row: Challenge; Insert: Omit<Challenge, "id" | "created_at"> & { id?: string }; Update: Partial<Challenge> };
+      challenge_claims: { Row: ChallengeClaim; Insert: Omit<ChallengeClaim, "id" | "claimed_at"> & { id?: string }; Update: Partial<ChallengeClaim> };
     };
     Views: Record<string, unknown>;
     Functions: Record<string, unknown>;

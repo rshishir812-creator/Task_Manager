@@ -19,6 +19,7 @@ import {
   computeSiblingCup,
 } from "@/lib/insights";
 import { computeMilestones } from "@/lib/milestone-calculator";
+import { sumChallengeXp } from "@/lib/xp";
 import HeroBanner from "@/components/stats/HeroBanner";
 import PersonalRecordsWall from "@/components/stats/PersonalRecordsWall";
 import UpNextBadges from "@/components/stats/UpNextBadges";
@@ -36,6 +37,7 @@ import type {
   Profile,
   Badge,
   UserBadge,
+  ChallengeClaim,
 } from "@/lib/types";
 
 export default async function StatsPage() {
@@ -62,6 +64,7 @@ export default async function StatsPage() {
     { data: bonusesData },
     { data: badgesData },
     { data: userBadgesData },
+    { data: claimsData },
     assignedIds,
     assignments,
     allKids,
@@ -77,6 +80,7 @@ export default async function StatsPage() {
     adminClient.from("daily_bonuses").select("*").eq("user_id", user.id),
     adminClient.from("badges").select("*").eq("family_id", profile.family_id),
     adminClient.from("user_badges").select("*").eq("user_id", user.id),
+    adminClient.from("challenge_claims").select("*").eq("user_id", user.id),
     getAssignedChoreIds(user.id),
     getAssignmentsForUser(user.id),
     getChildrenOfFamily(profile.family_id),
@@ -89,13 +93,15 @@ export default async function StatsPage() {
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];
   const badges = (badgesData as Badge[] | null) ?? [];
   const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
+  const claims = (claimsData as ChallengeClaim[] | null) ?? [];
 
   const today = getTodayIST();
   const todayDow = getDayOfWeek(today);
 
   const totalPoints =
     completions.reduce((s, c) => s + (c.points_earned ?? 0), 0) +
-    bonuses.reduce((s, b) => s + b.points_bonus, 0);
+    bonuses.reduce((s, b) => s + b.points_bonus, 0) +
+    sumChallengeXp(claims);
 
   const levelInfo = getLevelInfo(totalPoints);
   const records = computePersonalRecords(completions, streaks, today);
@@ -108,6 +114,7 @@ export default async function StatsPage() {
     completions,
     today,
     assignments,
+    extras: { totalXp: totalPoints, questsCompleted: claims.length },
   });
 
   const todaysChores = chores.filter((c) => c.recurrence.includes(todayDow));
