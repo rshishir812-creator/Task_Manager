@@ -95,6 +95,26 @@ export async function POST(request: NextRequest) {
     await adminClient.from("badges").upsert(badgeRows, { onConflict: "code,family_id" });
   }
 
+  // Phase 7 — family-agnostic badges (totals / quality / level / quests).
+  // Mirrors supabase/migrations/014_quests_and_badges.sql so NEW families also
+  // get them. chore_id is null for all of these.
+  const phase7Badges = [
+    { code: "total_50",        title: "Getting Started",   description: "Complete 50 chores in total",          icon: "🌱", badge_type: "milestone" as const, threshold: 50 },
+    { code: "total_100",       title: "Centurion",         description: "Complete 100 chores in total",         icon: "💯", badge_type: "milestone" as const, threshold: 100 },
+    { code: "total_250",       title: "Quarter-Master",    description: "Complete 250 chores in total",         icon: "🎖️", badge_type: "milestone" as const, threshold: 250 },
+    { code: "total_500",       title: "Unstoppable",       description: "Complete 500 chores in total",         icon: "🚀", badge_type: "milestone" as const, threshold: 500 },
+    { code: "total_1000",      title: "Quest Master",      description: "Complete 1000 chores in total",        icon: "🏰", badge_type: "milestone" as const, threshold: 1000 },
+    { code: "quality_ace_25",  title: "Rising Star",       description: "Earn 25 top-effort (4-star) ratings",  icon: "🌟", badge_type: "special" as const,   threshold: 25 },
+    { code: "quality_ace_100", title: "Perfectionist",     description: "Earn 100 top-effort (4-star) ratings", icon: "💎", badge_type: "special" as const,   threshold: 100 },
+    { code: "level_3",         title: "Achiever Unlocked", description: "Reach Level 3",                        icon: "🥉", badge_type: "special" as const,   threshold: 3 },
+    { code: "level_5",         title: "Hero Unlocked",     description: "Reach Level 5",                        icon: "🦸", badge_type: "special" as const,   threshold: 5 },
+    { code: "level_7",         title: "Grand Master",      description: "Reach Level 7",                        icon: "👑", badge_type: "special" as const,   threshold: 7 },
+    { code: "quest_1",         title: "Quest Starter",     description: "Complete your first Weekly Quest",     icon: "🗺️", badge_type: "special" as const,   threshold: 1 },
+    { code: "quest_5",         title: "Quest Regular",     description: "Complete 5 Weekly Quests",             icon: "🧭", badge_type: "special" as const,   threshold: 5 },
+    { code: "quest_15",        title: "Quest Legend",      description: "Complete 15 Weekly Quests",            icon: "🏆", badge_type: "special" as const,   threshold: 15 },
+  ].map((b) => ({ ...b, chore_id: null, family_id: ctx.familyId }));
+  await adminClient.from("badges").upsert(phase7Badges, { onConflict: "code,family_id" });
+
   // Assign every new chore to every target child
   const assignmentRows = createdChores.flatMap((chore) =>
     targetIds.map((user_id) => ({ chore_id: chore.id, user_id })),

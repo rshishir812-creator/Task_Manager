@@ -14,7 +14,8 @@ import ChildPicker from "@/components/admin/ChildPicker";
 import FamilyPulseStrip from "@/components/admin/FamilyPulseStrip";
 import ChampionBanner from "@/components/admin/ChampionBanner";
 import Link from "next/link";
-import type { Chore, ChoreAssignment, ChoreCompletion, DailyBonus, UserBadge, Streak } from "@/lib/types";
+import { sumChallengeXp } from "@/lib/xp";
+import type { Chore, ChoreAssignment, ChoreCompletion, DailyBonus, UserBadge, Streak, ChallengeClaim } from "@/lib/types";
 
 export default async function AdminDashboard({
   searchParams,
@@ -58,6 +59,7 @@ export default async function AdminDashboard({
     { data: streaksData },
     { data: bonusesData },
     { data: userBadgesData },
+    { data: claimsData },
     assignments,
   ] = await Promise.all([
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", ctx.familyId).order("sort_order"),
@@ -65,6 +67,7 @@ export default async function AdminDashboard({
     adminClient.from("streaks").select("*").eq("user_id", ridham.id),
     adminClient.from("daily_bonuses").select("*").eq("user_id", ridham.id),
     adminClient.from("user_badges").select("*").eq("user_id", ridham.id),
+    adminClient.from("challenge_claims").select("reward_points").eq("user_id", ridham.id),
     getAssignmentsForUser(ridham.id),
   ]);
 
@@ -77,12 +80,14 @@ export default async function AdminDashboard({
   const streaks = (streaksData as Streak[] | null) ?? [];
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];
   const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
+  const claims = (claimsData as Pick<ChallengeClaim, "reward_points">[] | null) ?? [];
 
   const todaysChores = getChoresForDay(chores, todayDow);
 
   const totalPoints =
     completions.reduce((s, c) => s + (c.points_earned ?? 0), 0) +
-    bonuses.reduce((s, b) => s + b.points_bonus, 0);
+    bonuses.reduce((s, b) => s + b.points_bonus, 0) +
+    sumChallengeXp(claims);
 
   const overallStreak = computeOverallStreak(chores, completions, today, assignments);
   const longestStreak = streaks.find((s) => s.chore_id === null)?.longest_streak ?? 0;

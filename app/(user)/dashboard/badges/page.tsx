@@ -5,7 +5,8 @@ import BadgeTile from "@/components/gamification/BadgeTile";
 import { computeMilestones } from "@/lib/milestone-calculator";
 import { getTodayIST } from "@/lib/streak-calculator";
 import { getAssignmentsForUser } from "@/lib/auth-scope";
-import type { Badge, Chore, ChoreCompletion, UserBadge, Profile } from "@/lib/types";
+import { sumChallengeXp } from "@/lib/xp";
+import type { Badge, Chore, ChoreCompletion, UserBadge, Profile, DailyBonus, ChallengeClaim } from "@/lib/types";
 
 export default async function BadgesPage() {
   const supabase = createClient();
@@ -25,12 +26,16 @@ export default async function BadgesPage() {
     { data: choresData },
     { data: completionsData },
     assignments,
+    { data: bonusesData },
+    { data: claimsData },
   ] = await Promise.all([
     adminClient.from("badges").select("*").eq("family_id", profile.family_id).order("badge_type").order("threshold"),
     adminClient.from("user_badges").select("*").eq("user_id", user.id),
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id),
     adminClient.from("chore_completions").select("*").eq("user_id", user.id),
     getAssignmentsForUser(user.id),
+    adminClient.from("daily_bonuses").select("points_bonus").eq("user_id", user.id),
+    adminClient.from("challenge_claims").select("*").eq("user_id", user.id),
   ]);
 
   const badges = (badgesData as Badge[] | null) ?? [];
@@ -41,8 +46,16 @@ export default async function BadgesPage() {
   );
   const chores = allChores.filter((c) => assignedIds.has(c.id));
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
+  const bonuses = (bonusesData as Pick<DailyBonus, "points_bonus">[] | null) ?? [];
+  const claims = (claimsData as ChallengeClaim[] | null) ?? [];
   const earnedMap = new Map(userBadges.map((ub) => [ub.badge_id, ub]));
   const earnedCount = userBadges.length;
+
+  // Total XP for level/quest badge progress (same basis as the dashboard hero).
+  const totalXp =
+    completions.reduce((s, c) => s + (c.points_earned ?? 0), 0) +
+    bonuses.reduce((s, b) => s + b.points_bonus, 0) +
+    sumChallengeXp(claims);
 
   const progressMap = new Map(
     computeMilestones({
@@ -52,6 +65,7 @@ export default async function BadgesPage() {
       completions,
       today: getTodayIST(),
       assignments,
+      extras: { totalXp, questsCompleted: claims.length },
     }).map((m) => [m.badge.id, m.progressFraction])
   );
 

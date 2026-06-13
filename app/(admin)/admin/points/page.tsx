@@ -4,7 +4,8 @@ import PointsOverridePanel from "@/components/admin/PointsOverridePanel";
 import { getParentContext, resolveChild, getChildrenOfFamily } from "@/lib/auth-scope";
 import ChildPicker from "@/components/admin/ChildPicker";
 import Link from "next/link";
-import type { ChoreCompletion, DailyBonus } from "@/lib/types";
+import { sumChallengeXp } from "@/lib/xp";
+import type { ChoreCompletion, DailyBonus, ChallengeClaim } from "@/lib/types";
 
 export default async function AdminPointsPage({
   searchParams,
@@ -32,17 +33,20 @@ export default async function AdminPointsPage({
 
   const ridham = child;
 
-  const [{ data: completionsData }, { data: bonusesData }] = await Promise.all([
+  const [{ data: completionsData }, { data: bonusesData }, { data: claimsData }] = await Promise.all([
     adminClient.from("chore_completions").select("points_earned").eq("user_id", ridham.id),
     adminClient.from("daily_bonuses").select("*").eq("user_id", ridham.id),
+    adminClient.from("challenge_claims").select("reward_points").eq("user_id", ridham.id),
   ]);
 
   const completions = (completionsData as Pick<ChoreCompletion, "points_earned">[] | null) ?? [];
   const bonuses = (bonusesData as DailyBonus[] | null) ?? [];
+  const claims = (claimsData as Pick<ChallengeClaim, "reward_points">[] | null) ?? [];
 
   const totalPoints =
     completions.reduce((s, c) => s + (c.points_earned ?? 0), 0) +
-    bonuses.reduce((s, b) => s + b.points_bonus, 0);
+    bonuses.reduce((s, b) => s + b.points_bonus, 0) +
+    sumChallengeXp(claims);
 
   // Manual overrides are stored with dates >= 9000-01-01
   const overrides = bonuses
