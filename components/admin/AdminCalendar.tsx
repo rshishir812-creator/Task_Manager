@@ -11,6 +11,7 @@ interface AdminCalendarProps {
   assignments?: ChoreAssignment[];
   userId: string;
   today: string;
+  holidayDates?: string[];
 }
 
 function buildMonthDays(year: number, month: number): string[] {
@@ -54,8 +55,9 @@ function scheduledOnDate(
   });
 }
 
-export default function AdminCalendar({ chores, completions, assignments, userId, today }: AdminCalendarProps) {
+export default function AdminCalendar({ chores, completions, assignments, userId, today, holidayDates }: AdminCalendarProps) {
   const router = useRouter();
+  const holidaySet = new Set(holidayDates ?? []);
   const todayDate = new Date(today + "T00:00:00");
   const [viewYear, setViewYear] = useState(todayDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(todayDate.getMonth());
@@ -87,6 +89,7 @@ export default function AdminCalendar({ chores, completions, assignments, userId
   }
 
   function getDayStatus(date: string) {
+    if (holidaySet.has(date)) return "holiday";
     const scheduled = scheduledOnDate(chores, assignmentByChoreId, date);
     if (scheduled.length === 0) return "no-chores";
     const done = localCompletions.filter(
@@ -105,6 +108,7 @@ export default function AdminCalendar({ chores, completions, assignments, userId
     missed: "bg-red-500/70 text-white",
     future: "bg-[var(--border)] text-fg-muted opacity-40",
     "no-chores": "bg-[var(--border)]/40 text-fg-muted",
+    holiday: "bg-purple-500/30 text-purple-200 ring-1 ring-purple-400/40",
   };
 
   async function toggleChore(choreId: string, date: string, currentState: "done" | "exception" | "none") {
@@ -212,7 +216,11 @@ export default function AdminCalendar({ chores, completions, assignments, userId
             <p className="font-display font-semibold text-fg">
               {new Date(selected + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <p className="text-xs text-fg-muted mt-0.5">Tap to cycle: ⬜ → ✅ → ⚡ → ⬜</p>
+            {holidaySet.has(selected) ? (
+              <p className="text-xs text-purple-300 mt-0.5">🏖️ Holiday — exempt from streaks &amp; progress</p>
+            ) : (
+              <p className="text-xs text-fg-muted mt-0.5">Tap to cycle: ⬜ → ✅ → ⚡ → ⬜</p>
+            )}
           </div>
 
           {selectedChores.length === 0 ? (

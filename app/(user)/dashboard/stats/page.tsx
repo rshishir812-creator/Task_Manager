@@ -20,6 +20,7 @@ import {
 } from "@/lib/insights";
 import { computeMilestones } from "@/lib/milestone-calculator";
 import { sumChallengeXp } from "@/lib/xp";
+import { getHolidaySetsForFamily } from "@/lib/holidays";
 import HeroBanner from "@/components/stats/HeroBanner";
 import PersonalRecordsWall from "@/components/stats/PersonalRecordsWall";
 import UpNextBadges from "@/components/stats/UpNextBadges";
@@ -103,6 +104,9 @@ export default async function StatsPage() {
     bonuses.reduce((s, b) => s + b.points_bonus, 0) +
     sumChallengeXp(claims);
 
+  const familyHolidays = await getHolidaySetsForFamily(profile.family_id);
+  const holidays = familyHolidays.get(user.id) ?? new Set<string>();
+
   const levelInfo = getLevelInfo(totalPoints);
   const records = computePersonalRecords(completions, streaks, today);
   const timeBuckets = computeTimeOfDayBuckets(completions);
@@ -115,6 +119,7 @@ export default async function StatsPage() {
     today,
     assignments,
     extras: { totalXp: totalPoints, questsCompleted: claims.length },
+    holidays,
   });
 
   const todaysChores = chores.filter((c) => c.recurrence.includes(todayDow));
@@ -132,6 +137,7 @@ export default async function StatsPage() {
     completions,
     today,
     assignments,
+    holidays,
   );
 
   const vibeLine = generateHeroVibeLine({
@@ -147,7 +153,7 @@ export default async function StatsPage() {
 
   // Weekly recap (Sundays only)
   const weeklyRecap = isRecapDay(today)
-    ? computeWeeklyRecap(completions, chores, assignments, badges, userBadges, today)
+    ? computeWeeklyRecap(completions, chores, assignments, badges, userBadges, today, holidays)
     : null;
 
   // Sibling Cup — fetch siblings' data only if family has 2+ kids
@@ -168,6 +174,7 @@ export default async function StatsPage() {
               completions: (comps.data as ChoreCompletion[] | null) ?? [],
               chores: allChores.filter((c) => sibAssignedIds.has(c.id)),
               assignments: sibAssignments,
+              holidays: familyHolidays.get(sib.id) ?? new Set<string>(),
             };
           }),
         ),
@@ -178,6 +185,7 @@ export default async function StatsPage() {
       completions,
       chores,
       assignments,
+      holidays,
     };
     siblingCupEntries = computeSiblingCup([meData, ...siblingsData], today);
   }

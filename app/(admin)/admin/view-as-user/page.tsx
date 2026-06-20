@@ -5,11 +5,12 @@ import { computeMilestones } from "@/lib/milestone-calculator";
 import { getParentContext, resolveChild, getChildrenOfFamily, getAssignmentsForUser } from "@/lib/auth-scope";
 import { ensureActiveChallenges } from "@/lib/challenge-server";
 import { computeChallengeProgress } from "@/lib/challenge-engine";
+import { expandHolidaysToSet } from "@/lib/holidays";
 import { sumChallengeXp } from "@/lib/xp";
 import ChildPicker from "@/components/admin/ChildPicker";
 import DashboardClient from "@/components/chores/DashboardClient";
 import type { QuestView } from "@/components/gamification/WeeklyQuestCard";
-import type { Chore, ChoreCompletion, Streak, DailyBonus, Badge, UserBadge, ChallengeClaim } from "@/lib/types";
+import type { Chore, ChoreCompletion, Streak, DailyBonus, Badge, UserBadge, ChallengeClaim, Holiday } from "@/lib/types";
 import Link from "next/link";
 
 export default async function ViewAsUserPage({
@@ -47,6 +48,7 @@ export default async function ViewAsUserPage({
     { data: badgesData },
     { data: userBadgesData },
     { data: claimsData },
+    { data: holidaysData },
     assignments,
   ] = await Promise.all([
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", childFamilyId).order("sort_order"),
@@ -56,6 +58,7 @@ export default async function ViewAsUserPage({
     adminClient.from("badges").select("*").eq("family_id", childFamilyId),
     adminClient.from("user_badges").select("*").eq("user_id", ridhamProfile.id),
     adminClient.from("challenge_claims").select("*").eq("user_id", ridhamProfile.id),
+    adminClient.from("holidays").select("*").eq("user_id", ridhamProfile.id),
     getAssignmentsForUser(ridhamProfile.id),
   ]);
 
@@ -70,6 +73,8 @@ export default async function ViewAsUserPage({
   const badges = (badgesData as Badge[] | null) ?? [];
   const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
   const claims = (claimsData as ChallengeClaim[] | null) ?? [];
+  const holidayRows = (holidaysData as Holiday[] | null) ?? [];
+  const holidays = expandHolidaysToSet(holidayRows);
 
   const today = getTodayIST();
   const todayDow = getDayOfWeek(today);
@@ -86,7 +91,7 @@ export default async function ViewAsUserPage({
     bonuses.reduce((sum, b) => sum + b.points_bonus, 0) +
     sumChallengeXp(claims);
 
-  const overallStreak = computeOverallStreak(chores, allCompletions, today, assignments);
+  const overallStreak = computeOverallStreak(chores, allCompletions, today, assignments, holidays);
 
   const milestones = computeMilestones({
     badges,
@@ -96,7 +101,13 @@ export default async function ViewAsUserPage({
     today,
     assignments,
     extras: { totalXp: totalPoints, questsCompleted: claims.length },
+    holidays,
   }).slice(0, 3);
+
+  const findHoliday = (d: string) => holidayRows.find((h) => d >= h.start_date && d <= h.end_date) ?? null;
+  const todayHol = holidays.has(today) ? findHoliday(today) : null;
+  const yesterdayHol = holidays.has(yesterday) ? findHoliday(yesterday) : null;
+  const holLabel = (h: Holiday | null) => (h ? { reason: h.reason, note: h.note } : null);
 
   // Weekly Quest mirror for the admin "view as" screen.
   const activeChallenges = await ensureActiveChallenges(childFamilyId, today);
@@ -151,6 +162,8 @@ export default async function ViewAsUserPage({
         overallStreak={overallStreak}
         milestones={milestones}
         quest={quest}
+        todayHoliday={holLabel(todayHol)}
+        yesterdayHoliday={holLabel(yesterdayHol)}
       />
     </div>
   );

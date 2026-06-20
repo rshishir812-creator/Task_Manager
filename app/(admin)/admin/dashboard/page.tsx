@@ -15,6 +15,7 @@ import FamilyPulseStrip from "@/components/admin/FamilyPulseStrip";
 import ChampionBanner from "@/components/admin/ChampionBanner";
 import Link from "next/link";
 import { sumChallengeXp } from "@/lib/xp";
+import { getHolidaySetsForFamily } from "@/lib/holidays";
 import type { Chore, ChoreAssignment, ChoreCompletion, DailyBonus, UserBadge, Streak, ChallengeClaim } from "@/lib/types";
 
 export default async function AdminDashboard({
@@ -89,7 +90,10 @@ export default async function AdminDashboard({
     bonuses.reduce((s, b) => s + b.points_bonus, 0) +
     sumChallengeXp(claims);
 
-  const overallStreak = computeOverallStreak(chores, completions, today, assignments);
+  const familyHolidays = await getHolidaySetsForFamily(ctx.familyId);
+  const holidays = familyHolidays.get(ridham.id) ?? new Set<string>();
+
+  const overallStreak = computeOverallStreak(chores, completions, today, assignments, holidays);
   const longestStreak = streaks.find((s) => s.chore_id === null)?.longest_streak ?? 0;
   const levelInfo = getLevelInfo(totalPoints);
 
@@ -125,6 +129,7 @@ export default async function AdminDashboard({
       chores: allChores.filter((c) => assignedIds.has(c.id)),
       assignments: k.assignments,
       badges: k.badges,
+      holidays: familyHolidays.get(k.profile.id) ?? new Set<string>(),
     };
   });
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AdminCalendar from "@/components/admin/AdminCalendar";
 import { getTodayIST } from "@/lib/streak-calculator";
 import { getParentContext, resolveChild, getChildrenOfFamily, getAssignmentsForUser } from "@/lib/auth-scope";
+import { getHolidaySetForUser } from "@/lib/holidays";
 import ChildPicker from "@/components/admin/ChildPicker";
 import Link from "next/link";
 import type { Chore, ChoreCompletion } from "@/lib/types";
@@ -43,6 +44,9 @@ export default async function AdminCalendarPage({
   const chores = (choresData as Chore[] | null) ?? [];
   const completions = (completionsData as ChoreCompletion[] | null) ?? [];
   const today = getTodayIST();
+  const holidaySet = await getHolidaySetForUser(ridham.id);
+  const holidayDates: string[] = [];
+  holidaySet.forEach((d) => holidayDates.push(d));
 
   return (
     <div className="flex flex-col gap-4">
@@ -59,6 +63,7 @@ export default async function AdminCalendarPage({
         assignments={assignments}
         userId={ridham.id}
         today={today}
+        holidayDates={holidayDates}
       />
     </div>
   );

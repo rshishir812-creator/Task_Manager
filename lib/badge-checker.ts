@@ -30,7 +30,8 @@ export function checkBadges(
   completions: ChoreCompletion[],
   today: string = getTodayIST(),
   assignments?: ChoreAssignment[],
-  extras?: BadgeExtras
+  extras?: BadgeExtras,
+  holidays?: ReadonlySet<string>
 ): BadgeAwardResult {
   const earnedIds = new Set(userBadges.map((ub) => ub.badge_id));
   const newBadges: Badge[] = [];
@@ -47,7 +48,7 @@ export function checkBadges(
     for (const a of assignments) assignmentByChoreId.set(a.chore_id, a);
   }
 
-  const overallStreak = computeOverallStreak(chores, completions, today, assignments);
+  const overallStreak = computeOverallStreak(chores, completions, today, assignments, holidays);
 
   for (const badge of badges) {
     if (earnedIds.has(badge.id)) continue;
@@ -84,7 +85,8 @@ export function checkBadges(
         chore,
         completions,
         today,
-        assignmentByChoreId.get(chore.id)
+        assignmentByChoreId.get(chore.id),
+        holidays
       );
       if (choreStreak >= badge.threshold) {
         newBadges.push(badge);
@@ -105,7 +107,7 @@ export function checkBadges(
   };
 
   const streakForChore = (chore: Chore) =>
-    computeChoreStreak(chore, completions, today, assignmentByChoreId.get(chore.id));
+    computeChoreStreak(chore, completions, today, assignmentByChoreId.get(chore.id), holidays);
 
   // Special badges (checked by code pattern)
   const specialChecks: Record<string, (badge: Badge) => boolean> = {

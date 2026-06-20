@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTodayIST, getDayOfWeek, getChoresForDay } from "@/lib/streak-calculator";
 import { getParentContext } from "@/lib/auth-scope";
+import { getHolidaySetsForFamily } from "@/lib/holidays";
 import type { Chore, ChoreCompletion, Profile } from "@/lib/types";
 
 export async function GET() {
@@ -36,7 +37,11 @@ export async function GET() {
   const userIdSet = new Set(users.map((u) => u.id));
   const completions = allCompletions.filter((c) => userIdSet.has(c.user_id));
 
+  // Don't nag kids who are on holiday today.
+  const familyHolidays = await getHolidaySetsForFamily(ctx.familyId);
+
   const behind = users
+    .filter((u) => !(familyHolidays.get(u.id)?.has(today)))
     .map((u) => {
       const done = new Set(
         completions.filter((c) => c.user_id === u.id).map((c) => c.chore_id)

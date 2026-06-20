@@ -29,7 +29,17 @@ interface DashboardClientProps {
   overallStreak: number;
   milestones: MilestoneProgress[];
   quest: QuestView | null;
+  todayHoliday: HolidayInfo | null;
+  yesterdayHoliday: HolidayInfo | null;
 }
+
+type HolidayInfo = { reason: "illness" | "travel" | "other"; note: string | null };
+
+const HOLIDAY_META: Record<HolidayInfo["reason"], { icon: string; label: string }> = {
+  illness: { icon: "🤒", label: "Rest & recover" },
+  travel: { icon: "✈️", label: "Travel day" },
+  other: { icon: "🏖️", label: "Day off" },
+};
 
 function getGreeting(name: string) {
   const hour = new Date().getHours();
@@ -51,6 +61,8 @@ export default function DashboardClient({
   overallStreak: initialOverallStreak,
   milestones,
   quest,
+  todayHoliday,
+  yesterdayHoliday,
 }: DashboardClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -237,6 +249,9 @@ export default function DashboardClient({
     [profile.id, router]
   );
 
+  const activeHoliday = isYesterday ? yesterdayHoliday : todayHoliday;
+  // On a holiday there are no chores due — show a day-off banner instead.
+  const displayChores = activeHoliday ? [] : activeChores;
   const completedActive = completions.filter(
     (c) => c.completed_date === activeDate && !c.is_exception
   );
@@ -355,9 +370,9 @@ export default function DashboardClient({
           </div>
           <div className="rounded-xl bg-bg p-3 text-center">
             <p className="font-display font-bold text-lg text-accent-teal">
-              {completedActive.length}/{activeChores.length}
+              {activeHoliday ? "🏖️" : `${completedActive.length}/${displayChores.length}`}
             </p>
-            <p className="text-xs text-fg-muted">Chores done</p>
+            <p className="text-xs text-fg-muted">{activeHoliday ? "Holiday" : "Chores done"}</p>
           </div>
           <div className="rounded-xl bg-bg p-3 text-center flex flex-col items-center justify-center">
             <StreakFlame streak={overallStreak} size="md" />
@@ -376,12 +391,28 @@ export default function DashboardClient({
         </div>
       )}
 
+      {/* Holiday banner — chores exempt, streak safe */}
+      {activeHoliday ? (
+        <div className="rounded-2xl border border-accent-teal/40 bg-accent-teal/10 p-8 text-center">
+          <p className="text-4xl mb-2">{HOLIDAY_META[activeHoliday.reason].icon}</p>
+          <p className="font-display font-bold text-fg text-lg">
+            {HOLIDAY_META[activeHoliday.reason].label}
+          </p>
+          <p className="text-sm text-fg-muted mt-1">
+            No chores {isYesterday ? "this day" : "today"} — your streak is safe. 🛡️
+          </p>
+          {activeHoliday.note && (
+            <p className="text-xs text-fg-muted/80 mt-2 italic">“{activeHoliday.note}”</p>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Chores section */}
       <h2 className="font-display font-bold text-lg text-fg mb-3">
         {isYesterday ? "Yesterday's" : "Today's"} Quests ⚔️
       </h2>
 
-      {activeChores.length === 0 ? (
+      {displayChores.length === 0 ? (
         <div className="rounded-2xl border border-[var(--border)] bg-bg-elevated p-8 text-center">
           <p className="text-3xl mb-2">🎊</p>
           <p className="font-display font-semibold text-fg">
@@ -393,7 +424,7 @@ export default function DashboardClient({
         </div>
       ) : (
         <div className={`grid gap-3 ${isPending ? "opacity-80" : ""}`}>
-          {activeChores.map((chore, i) => {
+          {displayChores.map((chore, i) => {
             const completion = completions.find(
               (c) => c.chore_id === chore.id && c.completed_date === activeDate
             );
@@ -412,6 +443,8 @@ export default function DashboardClient({
             );
           })}
         </div>
+      )}
+      </>
       )}
     </>
   );

@@ -306,6 +306,9 @@ export type KidDataForFamily = {
   completions: ChoreCompletion[];
   chores: Chore[];
   assignments: ChoreAssignment[];
+  // Phase 8 — holiday date set (YYYY-MM-DD). Dates inside are exempt: not
+  // scheduled, not missed. Optional/empty = no holidays (unchanged behaviour).
+  holidays?: ReadonlySet<string>;
 };
 
 export type FamilyScore = {
@@ -323,7 +326,10 @@ function scheduledOnDate(
   chores: Chore[],
   assignmentByChoreId: Map<string, ChoreAssignment>,
   dateStr: string,
+  holidays?: ReadonlySet<string>,
 ): Chore[] {
+  // Holiday date — nothing is "scheduled" (so it's neither done nor missed).
+  if (holidays?.has(dateStr)) return [];
   const dow = getDayOfWeek(dateStr);
   return chores.filter((c) => {
     if (!c.recurrence.includes(dow)) return false;
@@ -366,7 +372,7 @@ function consistencyOver(
     const endDate = new Date(end + "T00:00:00");
     while (cursor <= endDate) {
       const dateStr = cursor.toISOString().slice(0, 10);
-      const due = scheduledOnDate(k.chores, assignmentByChoreId, dateStr);
+      const due = scheduledOnDate(k.chores, assignmentByChoreId, dateStr, k.holidays);
       scheduled += due.length;
       const done = completedByDate.get(dateStr) ?? new Set();
       verified += due.filter((c) => done.has(c.id)).length;
@@ -548,13 +554,14 @@ export function computeKidsTodayStatus(
     completions: ChoreCompletion[];
     chores: Chore[];
     assignments: ChoreAssignment[];
+    holidays?: ReadonlySet<string>;
   }>,
   today: string,
 ): KidTodayStatus[] {
   return kidsData.map((k) => {
     const assignmentByChoreId = new Map<string, ChoreAssignment>();
     for (const a of k.assignments) assignmentByChoreId.set(a.chore_id, a);
-    const due = scheduledOnDate(k.chores, assignmentByChoreId, today);
+    const due = scheduledOnDate(k.chores, assignmentByChoreId, today, k.holidays);
     const done = new Set(
       onlyVerified(k.completions)
         .filter((c) => c.completed_date === today)
@@ -603,6 +610,7 @@ export function computeWeeklyRecap(
   badges: Badge[],
   userBadges: UserBadge[],
   today: string,
+  holidays?: ReadonlySet<string>,
 ): WeeklyRecap | null {
   if (!isRecapDay(today)) return null;
 
@@ -670,7 +678,7 @@ export function computeWeeklyRecap(
     const endDate = new Date(wkEnd + "T00:00:00");
     while (cursor <= endDate) {
       const dateStr = cursor.toISOString().slice(0, 10);
-      const due = scheduledOnDate([topChoreObj], assignmentByChoreId, dateStr);
+      const due = scheduledOnDate([topChoreObj], assignmentByChoreId, dateStr, holidays);
       topChoreScheduled += due.length;
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -734,6 +742,7 @@ export function computePerChildSparkline(
   assignments: ChoreAssignment[],
   today: string,
   weeksBack = 8,
+  holidays?: ReadonlySet<string>,
 ): SparklinePoint[] {
   const points: SparklinePoint[] = [];
   const assignmentByChoreId = new Map<string, ChoreAssignment>();
@@ -748,7 +757,7 @@ export function computePerChildSparkline(
     const ws = startDate.toISOString().slice(0, 10);
     const we = endDate.toISOString().slice(0, 10);
 
-    const { verified, scheduled } = consistencyOver([{ completions, chores, assignments }], ws, we);
+    const { verified, scheduled } = consistencyOver([{ completions, chores, assignments, holidays }], ws, we);
     points.push({
       weekStart: ws,
       consistencyPct: scheduled > 0 ? Math.round((verified / scheduled) * 100) : 0,
@@ -779,6 +788,7 @@ export function computeChoreDifficultyStats(
   allAssignments: ChoreAssignment[],
   today: string,
   days = 30,
+  holidays?: ReadonlySet<string>,
 ): ChoreDifficultyStats[] {
   const startDate = new Date(today + "T00:00:00");
   startDate.setDate(startDate.getDate() - (days - 1));
@@ -796,7 +806,7 @@ export function computeChoreDifficultyStats(
       const endDate = new Date(today + "T00:00:00");
       while (cursor <= endDate) {
         const dateStr = cursor.toISOString().slice(0, 10);
-        const due = scheduledOnDate([chore], assignmentByChoreId, dateStr);
+        const due = scheduledOnDate([chore], assignmentByChoreId, dateStr, holidays);
         scheduled += due.length;
         cursor.setDate(cursor.getDate() + 1);
       }
