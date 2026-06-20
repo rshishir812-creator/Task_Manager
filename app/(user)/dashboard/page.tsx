@@ -6,10 +6,11 @@ import { computeMilestones } from "@/lib/milestone-calculator";
 import { getAssignmentsForUser } from "@/lib/auth-scope";
 import { ensureActiveChallenges } from "@/lib/challenge-server";
 import { computeChallengeProgress } from "@/lib/challenge-engine";
+import { expandHolidaysToSet } from "@/lib/holidays";
 import { sumChallengeXp } from "@/lib/xp";
 import DashboardClient from "@/components/chores/DashboardClient";
 import type { QuestView } from "@/components/gamification/WeeklyQuestCard";
-import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile, Badge, UserBadge, ChallengeClaim } from "@/lib/types";
+import type { Chore, ChoreCompletion, Streak, DailyBonus, Profile, Badge, UserBadge, ChallengeClaim, Holiday } from "@/lib/types";
 
 export default async function UserDashboard() {
   const supabase = createClient();
@@ -32,6 +33,7 @@ export default async function UserDashboard() {
     { data: badgesData },
     { data: userBadgesData },
     { data: claimsData },
+    { data: holidaysData },
     assignments,
   ] = await Promise.all([
     adminClient.from("chores").select("*").eq("is_active", true).eq("family_id", profile.family_id).order("sort_order"),
@@ -41,6 +43,7 @@ export default async function UserDashboard() {
     adminClient.from("badges").select("*").eq("family_id", profile.family_id),
     adminClient.from("user_badges").select("*").eq("user_id", user.id),
     adminClient.from("challenge_claims").select("*").eq("user_id", user.id),
+    adminClient.from("holidays").select("*").eq("user_id", user.id),
     getAssignmentsForUser(user.id),
   ]);
 
@@ -56,6 +59,8 @@ export default async function UserDashboard() {
   const badges = (badgesData as Badge[] | null) ?? [];
   const userBadges = (userBadgesData as UserBadge[] | null) ?? [];
   const claims = (claimsData as ChallengeClaim[] | null) ?? [];
+  const holidayRows = (holidaysData as Holiday[] | null) ?? [];
+  const holidays = expandHolidaysToSet(holidayRows);
 
   const today = getTodayIST();
   const todayDow = getDayOfWeek(today);
@@ -67,13 +72,18 @@ export default async function UserDashboard() {
   const yesterdaysChores = getChoresForDay(chores, yesterdayDow);
   const yesterdayCompletions = allCompletions.filter((c) => c.completed_date === yesterday);
 
+  // Holiday state for the two viewable days (today / yesterday).
+  const findHoliday = (d: string) => holidayRows.find((h) => d >= h.start_date && d <= h.end_date) ?? null;
+  const todayHoliday = holidays.has(today) ? findHoliday(today) : null;
+  const yesterdayHoliday = holidays.has(yesterday) ? findHoliday(yesterday) : null;
+
   // Calculate total points: sum of all completions + daily bonuses + quest rewards
   const totalPoints =
     allCompletions.reduce((sum, c) => sum + (c.points_earned ?? 0), 0) +
     bonuses.reduce((sum, b) => sum + b.points_bonus, 0) +
     sumChallengeXp(claims);
 
-  const overallStreak = computeOverallStreak(chores, allCompletions, today, assignments);
+  const overallStreak = computeOverallStreak(chores, allCompletions, today, assignments, holidays);
 
   // Weekly Quest — ensure this week's quest exists, compute progress for the card.
   const activeChallenges = await ensureActiveChallenges(profile.family_id, today);
@@ -108,7 +118,11 @@ export default async function UserDashboard() {
     today,
     assignments,
     extras: { totalXp: totalPoints, questsCompleted: claims.length },
+    holidays,
   }).slice(0, 3);
+
+  const holidayLabel = (h: Holiday | null) =>
+    h ? { reason: h.reason, note: h.note } : null;
 
   return (
     <DashboardClient
@@ -124,6 +138,8 @@ export default async function UserDashboard() {
       overallStreak={overallStreak}
       milestones={milestones}
       quest={quest}
+      todayHoliday={holidayLabel(todayHoliday)}
+      yesterdayHoliday={holidayLabel(yesterdayHoliday)}
     />
   );
 }

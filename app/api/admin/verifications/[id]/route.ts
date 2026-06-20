@@ -9,6 +9,7 @@ import {
   getDayOfWeek,
 } from "@/lib/streak-calculator";
 import { DAILY_BONUS_POINTS } from "@/lib/constants";
+import { getHolidaySetForUser } from "@/lib/holidays";
 import { isValidQualityRating, pointsForRating } from "@/lib/quality-rating";
 import type {
   Chore,
@@ -114,8 +115,11 @@ export async function POST(
   const chores = allChoresInFamily.filter((c) => assignedIds.has(c.id));
   const choreAssignment = assignments.find((a) => a.chore_id === chore.id);
 
-  const newChoreStreak = computeChoreStreak(chore, completions, completedDate, choreAssignment);
-  const newOverallStreak = computeOverallStreak(chores, completions, completedDate, assignments);
+  const holidays = await getHolidaySetForUser(userId);
+  const isHoliday = holidays.has(completedDate);
+
+  const newChoreStreak = computeChoreStreak(chore, completions, completedDate, choreAssignment, holidays);
+  const newOverallStreak = computeOverallStreak(chores, completions, completedDate, assignments, holidays);
 
   await admin.from("streaks").upsert(
     {
@@ -163,7 +167,7 @@ export async function POST(
       .filter((c) => c.completed_date === completedDate && c.status === "verified")
       .map((c) => c.chore_id),
   );
-  const allComplete = todaysChores.every((c) => verifiedToday.has(c.id));
+  const allComplete = !isHoliday && todaysChores.length > 0 && todaysChores.every((c) => verifiedToday.has(c.id));
 
   if (allComplete) {
     const { data: existing } = await admin
@@ -200,6 +204,8 @@ export async function POST(
     completions,
     completedDate,
     assignments,
+    undefined,
+    holidays,
   );
 
   if (newBadges.length > 0) {

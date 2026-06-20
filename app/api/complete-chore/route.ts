@@ -12,6 +12,7 @@ import {
 import { DAILY_BONUS_POINTS } from "@/lib/constants";
 import { ensureActiveChallenges } from "@/lib/challenge-server";
 import { computeChallengeProgress } from "@/lib/challenge-engine";
+import { getHolidaySetForUser } from "@/lib/holidays";
 import { getTotalXp } from "@/lib/xp";
 import type { Chore, ChoreAssignment, ChoreCompletion, Badge, UserBadge, Streak, CompletionStatus, DailyBonus, ChallengeClaim } from "@/lib/types";
 
@@ -190,8 +191,13 @@ export async function POST(request: NextRequest) {
   const chores = allChoresInFamily.filter((c) => assignedIds.has(c.id));
   const choreAssignment = assignments.find((a) => a.chore_id === choreId);
 
-  const newChoreStreak = computeChoreStreak(chore, completions, completedDate, choreAssignment);
-  const newOverallStreak = computeOverallStreak(chores, completions, completedDate, assignments);
+  // Holiday exemption — dates inside a holiday are neutral for streaks/badges
+  // and never award a daily bonus.
+  const holidays = await getHolidaySetForUser(user.id);
+  const isHoliday = holidays.has(completedDate);
+
+  const newChoreStreak = computeChoreStreak(chore, completions, completedDate, choreAssignment, holidays);
+  const newOverallStreak = computeOverallStreak(chores, completions, completedDate, assignments, holidays);
 
   await adminClient.from("streaks").upsert(
     {
@@ -240,7 +246,8 @@ export async function POST(request: NextRequest) {
       .filter((c) => c.completed_date === completedDate && c.status === "verified")
       .map((c) => c.chore_id),
   );
-  const allComplete = todaysChores.every((c) => verifiedToday.has(c.id));
+  // A holiday is a day off — never counts as a "perfect day".
+  const allComplete = !isHoliday && todaysChores.length > 0 && todaysChores.every((c) => verifiedToday.has(c.id));
 
   let dailyBonusAwarded = false;
   if (allComplete) {
@@ -334,6 +341,7 @@ export async function POST(request: NextRequest) {
     completedDate,
     assignments,
     { totalXp, questsCompleted: allClaims.length },
+    holidays,
   );
 
   if (newBadges.length > 0) {

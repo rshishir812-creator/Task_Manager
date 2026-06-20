@@ -97,7 +97,8 @@ export function computeChoreStreak(
   chore: Chore,
   completions: ChoreCompletion[],
   todayStr: string,
-  assignment?: ChoreAssignment
+  assignment?: ChoreAssignment,
+  holidays?: ReadonlySet<string>
 ): number {
   const completedDates = new Set(
     onlyVerified(completions)
@@ -116,7 +117,9 @@ export function computeChoreStreak(
     const aliveAndAssigned =
       isChoreAliveOn(chore, dateStr) &&
       (assignment === undefined ? true : isAssignedOn(assignment, dateStr));
-    const applies = recurrenceMatches && aliveAndAssigned;
+    // A holiday date is exempt — treated as non-scheduled (neutral): it never
+    // extends or breaks the streak.
+    const applies = recurrenceMatches && aliveAndAssigned && !holidays?.has(dateStr);
 
     if (applies) {
       if (completedDates.has(dateStr)) {
@@ -147,7 +150,8 @@ export function computeOverallStreak(
   chores: Chore[],
   completions: ChoreCompletion[],
   todayStr: string,
-  assignments?: ChoreAssignment[]
+  assignments?: ChoreAssignment[],
+  holidays?: ReadonlySet<string>
 ): number {
   const byDate = new Map<string, Set<string>>();
   for (const c of onlyVerified(completions)) {
@@ -166,6 +170,12 @@ export function computeOverallStreak(
   for (let i = 0; i < 400; i++) {
     const dateStr = cursor.toISOString().slice(0, 10);
     const day = getDayOfWeek(dateStr);
+
+    // Holiday date — exempt: treat as a neutral day off (no break, no extend).
+    if (holidays?.has(dateStr)) {
+      cursor.setDate(cursor.getDate() - 1);
+      continue;
+    }
 
     const scheduled = chores.filter((c) => {
       if (!c.recurrence.includes(day)) return false;

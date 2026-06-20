@@ -6,6 +6,7 @@ import { computeMilestones } from "@/lib/milestone-calculator";
 import { getTodayIST } from "@/lib/streak-calculator";
 import { getAssignmentsForUser } from "@/lib/auth-scope";
 import { sumChallengeXp } from "@/lib/xp";
+import { getHolidaySetForUser } from "@/lib/holidays";
 import type { Badge, Chore, ChoreCompletion, UserBadge, Profile, DailyBonus, ChallengeClaim } from "@/lib/types";
 
 export default async function BadgesPage() {
@@ -57,6 +58,8 @@ export default async function BadgesPage() {
     bonuses.reduce((s, b) => s + b.points_bonus, 0) +
     sumChallengeXp(claims);
 
+  const holidays = await getHolidaySetForUser(user.id);
+
   const progressMap = new Map(
     computeMilestones({
       badges,
@@ -66,6 +69,7 @@ export default async function BadgesPage() {
       today: getTodayIST(),
       assignments,
       extras: { totalXp, questsCompleted: claims.length },
+      holidays,
     }).map((m) => [m.badge.id, m.progressFraction])
   );
 

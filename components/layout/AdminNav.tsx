@@ -23,6 +23,7 @@ const BASE_LINKS: NavLink[] = [
   { href: "/admin/rewards", label: "Rewards", icon: "🎁" },
   { href: "/admin/redemptions", label: "Redeem", icon: "📬" },
   { href: "/admin/points", label: "Points", icon: "💰" },
+  { href: "/admin/holidays", label: "Holidays", icon: "🏖️" },
   { href: "/admin/family", label: "Family", icon: "👨‍👩‍👧" },
   { href: "/admin/feedback", label: "Feedback", icon: "✉️", kind: "feedback" },
 ];

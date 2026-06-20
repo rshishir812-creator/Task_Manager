@@ -20,7 +20,8 @@ function streakOnChoreMatching(
   keywords: string[],
   target: number,
   choreId: string | null | undefined,
-  assignment: ChoreAssignment | undefined
+  assignment: ChoreAssignment | undefined,
+  holidays?: ReadonlySet<string>
 ): SpecialResult {
   let chore: Chore | undefined;
   if (choreId) chore = chores.find((c) => c.id === choreId);
@@ -31,7 +32,7 @@ function streakOnChoreMatching(
   }
   if (!chore) return { current: 0, target };
   return {
-    current: computeChoreStreak(chore, completions, today, assignment),
+    current: computeChoreStreak(chore, completions, today, assignment, holidays),
     target,
     chore,
   };
@@ -43,7 +44,8 @@ function minStreakAcrossMatching(
   today: string,
   keywords: string[],
   target: number,
-  assignmentByChoreId: Map<string, ChoreAssignment>
+  assignmentByChoreId: Map<string, ChoreAssignment>,
+  holidays?: ReadonlySet<string>
 ): SpecialResult {
   const matching = chores.filter((c) =>
     keywords.some((k) => c.title.toLowerCase().includes(k))
@@ -51,7 +53,7 @@ function minStreakAcrossMatching(
   if (matching.length === 0) return { current: 0, target };
   const min = Math.min(
     ...matching.map((c) =>
-      computeChoreStreak(c, completions, today, assignmentByChoreId.get(c.id))
+      computeChoreStreak(c, completions, today, assignmentByChoreId.get(c.id), holidays)
     )
   );
   return { current: min, target, chore: matching[0] };
@@ -66,23 +68,24 @@ const SPECIAL_HANDLERS: Record<
     completions: ChoreCompletion[],
     today: string,
     assignmentByChoreId: Map<string, ChoreAssignment>,
-    assignments: ChoreAssignment[]
+    assignments: ChoreAssignment[],
+    holidays?: ReadonlySet<string>
   ) => SpecialResult
 > = {
-  special_perfect_week: (_badge, chores, completions, today, _abc, assignments) => ({
-    current: computeOverallStreak(chores, completions, today, assignments),
+  special_perfect_week: (_badge, chores, completions, today, _abc, assignments, holidays) => ({
+    current: computeOverallStreak(chores, completions, today, assignments, holidays),
     target: 7,
   }),
-  special_early_bird: (badge, chores, completions, today, abc) =>
-    streakOnChoreMatching(chores, completions, today, ["wake up"], 7, badge.chore_id, abc.get(badge.chore_id ?? "")),
-  special_bookworm: (badge, chores, completions, today, abc) =>
-    streakOnChoreMatching(chores, completions, today, ["read"], 30, badge.chore_id, abc.get(badge.chore_id ?? "")),
-  special_pooja_devotee: (badge, chores, completions, today, abc) =>
-    streakOnChoreMatching(chores, completions, today, ["pooja"], 30, badge.chore_id, abc.get(badge.chore_id ?? "")),
-  special_singing_star: (_badge, chores, completions, today, abc) =>
-    minStreakAcrossMatching(chores, completions, today, ["singing", "kharaj"], 14, abc),
-  special_pill_paladin: (badge, chores, completions, today, abc) =>
-    streakOnChoreMatching(chores, completions, today, ["medicine"], 50, badge.chore_id, abc.get(badge.chore_id ?? "")),
+  special_early_bird: (badge, chores, completions, today, abc, _a, holidays) =>
+    streakOnChoreMatching(chores, completions, today, ["wake up"], 7, badge.chore_id, abc.get(badge.chore_id ?? ""), holidays),
+  special_bookworm: (badge, chores, completions, today, abc, _a, holidays) =>
+    streakOnChoreMatching(chores, completions, today, ["read"], 30, badge.chore_id, abc.get(badge.chore_id ?? ""), holidays),
+  special_pooja_devotee: (badge, chores, completions, today, abc, _a, holidays) =>
+    streakOnChoreMatching(chores, completions, today, ["pooja"], 30, badge.chore_id, abc.get(badge.chore_id ?? ""), holidays),
+  special_singing_star: (_badge, chores, completions, today, abc, _a, holidays) =>
+    minStreakAcrossMatching(chores, completions, today, ["singing", "kharaj"], 14, abc, holidays),
+  special_pill_paladin: (badge, chores, completions, today, abc, _a, holidays) =>
+    streakOnChoreMatching(chores, completions, today, ["medicine"], 50, badge.chore_id, abc.get(badge.chore_id ?? ""), holidays),
 };
 
 export function computeMilestones(args: {
@@ -93,8 +96,9 @@ export function computeMilestones(args: {
   today: string;
   assignments?: ChoreAssignment[];
   extras?: { totalXp?: number; questsCompleted?: number };
+  holidays?: ReadonlySet<string>;
 }): MilestoneProgress[] {
-  const { badges, userBadges, chores, completions, today, assignments, extras } = args;
+  const { badges, userBadges, chores, completions, today, assignments, extras, holidays } = args;
   const earnedIds = new Set(userBadges.map((ub) => ub.badge_id));
   const results: MilestoneProgress[] = [];
 
@@ -122,12 +126,12 @@ export function computeMilestones(args: {
     if (badge.badge_type === "streak" && badge.threshold !== null) {
       target = badge.threshold;
       if (badge.chore_id === null) {
-        current = computeOverallStreak(chores, completions, today, assignments);
+        current = computeOverallStreak(chores, completions, today, assignments, holidays);
       } else {
         const c = chores.find((ch) => ch.id === badge.chore_id);
         if (!c || !c.is_active) continue;
         chore = c;
-        current = computeChoreStreak(c, completions, today, assignmentByChoreId.get(c.id));
+        current = computeChoreStreak(c, completions, today, assignmentByChoreId.get(c.id), holidays);
       }
     } else if (badge.badge_type === "special") {
       // Phase 7 — new special families first (level / quality / quests).
@@ -145,7 +149,7 @@ export function computeMilestones(args: {
       } else {
         const handler = SPECIAL_HANDLERS[badge.code];
         if (!handler) continue;
-        const res = handler(badge, chores, completions, today, assignmentByChoreId, safeAssignments);
+        const res = handler(badge, chores, completions, today, assignmentByChoreId, safeAssignments, holidays);
         if (!res) continue;
         current = res.current;
         target = res.target;

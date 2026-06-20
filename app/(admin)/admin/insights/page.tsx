@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTodayIST } from "@/lib/streak-calculator";
 import { getParentContext, getChildrenOfFamily } from "@/lib/auth-scope";
+import { getHolidaySetsForFamily } from "@/lib/holidays";
 import { getFamilyPlan } from "@/lib/subscription";
 import PremiumLocked from "@/components/billing/PremiumLocked";
 import {
@@ -42,6 +43,7 @@ export default async function InsightsPage() {
   const adminClient = createAdminClient();
   const kids = await getChildrenOfFamily(ctx.familyId);
   const today = getTodayIST();
+  const familyHolidays = await getHolidaySetsForFamily(ctx.familyId);
 
   if (kids.length === 0) {
     return (
@@ -90,6 +92,7 @@ export default async function InsightsPage() {
       chores: allChores.filter((c) => assignedIds.has(c.id)),
       assignments: k.assignments,
       badges: k.badges,
+      holidays: familyHolidays.get(k.kid.id) ?? new Set<string>(),
     };
   });
 
@@ -116,7 +119,7 @@ export default async function InsightsPage() {
   // Per-child sparklines
   const sparklines = kidsData.map((k) => ({
     kid: k.profile,
-    points: computePerChildSparkline(k.completions, k.chores, k.assignments, today),
+    points: computePerChildSparkline(k.completions, k.chores, k.assignments, today, 8, k.holidays),
   }));
 
   // Chore health — aggregate all completions across all kids for the shared chore catalog

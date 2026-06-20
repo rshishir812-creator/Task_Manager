@@ -198,6 +198,21 @@ export interface ChallengeClaim {
   claimed_at: string;
 }
 
+// Phase 8 — Holiday / exemption periods (illness · travel)
+export type HolidayReason = "illness" | "travel" | "other";
+
+export interface Holiday {
+  id: string;
+  family_id: string;
+  user_id: string;
+  start_date: string; // YYYY-MM-DD, inclusive
+  end_date: string;   // YYYY-MM-DD, inclusive
+  reason: HolidayReason;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export type FeedbackStatus = "new" | "in_progress" | "resolved" | "archived";
 
 export interface Feedback {
@@ -235,6 +250,7 @@ export type Database = {
       feedback: { Row: Feedback; Insert: Omit<Feedback, "id" | "created_at" | "status" | "admin_note" | "reviewed_by" | "reviewed_at"> & { status?: FeedbackStatus }; Update: Partial<Feedback> };
       challenges: { Row: Challenge; Insert: Omit<Challenge, "id" | "created_at"> & { id?: string }; Update: Partial<Challenge> };
       challenge_claims: { Row: ChallengeClaim; Insert: Omit<ChallengeClaim, "id" | "claimed_at"> & { id?: string }; Update: Partial<ChallengeClaim> };
+      holidays: { Row: Holiday; Insert: Omit<Holiday, "id" | "created_at"> & { id?: string }; Update: Partial<Holiday> };
     };
     Views: Record<string, unknown>;
     Functions: Record<string, unknown>;
