@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Nunito, Baloo_2, Inter } from "next/font/google";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/marketing/site";
 import "./globals.css";
+import "@/sentry.client.config";
 
 const nunito = Nunito({
   subsets: ["latin"],

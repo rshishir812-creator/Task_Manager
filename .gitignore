@@ -50,3 +50,6 @@ client_secret_*.json
 /public/worker-*.js
 /public/worker-*.js.map
 /public/fallback-*.js
+
+# Sentry Config File
+.env.sentry-build-plugin
